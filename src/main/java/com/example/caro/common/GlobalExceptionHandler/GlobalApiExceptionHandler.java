@@ -3,6 +3,9 @@ package com.example.caro.common.GlobalExceptionHandler;
 
 
 import com.example.caro.common.ApiResponse.ApiResponse;
+import com.example.caro.common.exception.CustomException;
+import com.example.caro.common.exception.KakaoOAuthException;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
@@ -18,32 +21,75 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.LinkedHashMap;
 
+
+@Slf4j
 @RestControllerAdvice(annotations = RestController.class)
 public class GlobalApiExceptionHandler {
 
-    @ExceptionHandler(ResponseStatusException.class)
-    public ResponseEntity<?> handleResponseStatus(ResponseStatusException ex) {
-        HttpStatusCode statuscode = ex.getStatusCode();
-        HttpStatus status = HttpStatus.valueOf(statuscode.value());
-        
-        String message = ex.getReason();
-        if(message==null){message = "아마 이유를 지정안한것같음";}
+    @ExceptionHandler(CustomException.class)
+    public ResponseEntity<ApiResponse<String>> handleCustomException(CustomException ex) {
+        HttpStatusCode statusCode = ex.getStatus();
 
+        String message = ex.getMessage();
+
+        if (statusCode.is5xxServerError()) {
+            log.error("Custom Error: {} | Status: {}", message, statusCode);
+        } else {
+            log.warn("Custom Error: {} | Status: {}", message, statusCode);
+        }
+
+        return ResponseEntity
+                .status(statusCode)
+                .body(ApiResponse.failed(statusCode, message));
+    }
+    @ExceptionHandler(KakaoOAuthException.class)
+    public ResponseEntity<ApiResponse<String>> handleKakaoOAuthException(KakaoOAuthException ex) {
+        HttpStatusCode statusCode = ex.getStatus();
+
+        String message = ex.getMessage();
+        String apiMessage = ex.getApiMessage();
+
+        log.warn("Custom Error: {} | Status: {}", apiMessage, statusCode);
 
 
         return ResponseEntity
-                .status(ex.getStatusCode())
-                .body(ApiResponse.failed(status.getReasonPhrase(), message));
+                .status(statusCode)
+                .body(ApiResponse.failed(statusCode, message));
+    }
+
+    @ExceptionHandler(ResponseStatusException.class)
+    public ResponseEntity<ApiResponse<String>> handleResponseStatus(ResponseStatusException ex) {
+        HttpStatusCode statusCode = ex.getStatusCode();
+
+        String message = (ex.getReason() != null) ? ex.getReason() : "요청 처리 중 오류가 발생했습니다.";
+
+        if (statusCode.is5xxServerError()) {
+            log.error("Server Error: {} | Status: {}", message, statusCode);
+        } else {
+            log.warn("Client Error: {} | Status: {}", message, statusCode);
+        }
+
+
+        return ResponseEntity
+                .status(statusCode)
+                .body(ApiResponse.failed(statusCode, message));
     }
 
 
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<Object> handleGeneric(Exception ex) {
-        return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(ApiResponse.failed(ex.getMessage(), "internal server error"));
+    public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex) {
 
+        HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
+
+
+        log.error("[Internal Server Error] Message: {} | Status: {}", ex.getMessage(), status.value(), ex);
+
+
+        return ResponseEntity
+                .status(status)
+                .body(ApiResponse.failed(
+                        HttpStatusCode.valueOf(status.value()),
+                        "서버 내부 오류가 발생했습니다. 관리자에게 문의하세요."));
     }
 }
-
