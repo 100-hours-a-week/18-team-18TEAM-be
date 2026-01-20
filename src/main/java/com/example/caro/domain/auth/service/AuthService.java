@@ -23,8 +23,7 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported provider: " + provider);
         }
 
-        validateKakaoConfig();
-        System.out.println("test");
+
 
         KakaoTokenResponse tokenResponse = kakaoOAuthClient.exchangeCodeForToken(code);
         if (tokenResponse == null || !StringUtils.hasText(tokenResponse.accessToken())) {
@@ -36,16 +35,13 @@ public class AuthService {
         if (userResponse == null || userResponse.id() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to fetch Kakao user profile");
         }
+        KakaoUserResponse.KakaoAccount kakaoAccount = userResponse.kakaoAccount();
+        KakaoUserResponse.KakaoProfile kakaoProfile = kakaoAccount.profile();
 
-        String email = userResponse.kakaoAccount() != null ? userResponse.kakaoAccount().email() : null;
-        String nickname = userResponse.properties() != null ? userResponse.properties().nickname() : null;
-        String imageUrl = null;
-        if (userResponse.kakaoAccount() != null && userResponse.kakaoAccount().profile() != null) {
-            imageUrl = userResponse.kakaoAccount().profile().profileImageUrl();
-        }
-        if (!StringUtils.hasText(imageUrl) && userResponse.properties() != null) {
-            imageUrl = userResponse.properties().profileImage();
-        }
+        String email = kakaoAccount.email();
+        String nickname = kakaoProfile.nickname();
+        String imageUrl = kakaoProfile.profileImageUrl();
+
 
         return new LoginResponse(
                 "kakao",
@@ -56,9 +52,4 @@ public class AuthService {
         );
     }
 
-    private void validateKakaoConfig() {
-        if (!StringUtils.hasText(kakaoOAuthProperties.getClientId())) {
-            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Kakao client id is missing");
-        }
-    }
 }

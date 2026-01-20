@@ -35,4 +35,6 @@ public class AuthController {
     public ResponseEntity<String> kakaoCallback(@RequestParam String code) {
         return ResponseEntity.ok(code);
     }
+
+
 }
