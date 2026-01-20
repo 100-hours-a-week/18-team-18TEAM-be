@@ -4,8 +4,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 
 public record KakaoUserResponse(
         @JsonProperty("id") Long id,
-        @JsonProperty("kakao_account") KakaoAccount kakaoAccount,
-        @JsonProperty("properties") KakaoProperties properties
+        @JsonProperty("kakao_account") KakaoAccount kakaoAccount
 ) {
     public record KakaoAccount(
             @JsonProperty("email") String email,
@@ -13,13 +12,8 @@ public record KakaoUserResponse(
     ) {
     }
 
-    public record KakaoProperties(
+    public record KakaoProfile(
             @JsonProperty("nickname") String nickname,
-            @JsonProperty("profile_image") String profileImage
-    ) {
+            @JsonProperty("profile_image_url") String profileImageUrl) {
     }
-
-    public record KakaoProfile(@JsonProperty("profile_image_url") String profileImageUrl) {
-    }
-
 }

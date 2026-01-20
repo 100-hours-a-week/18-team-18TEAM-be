@@ -2,24 +2,21 @@ package com.example.caro.common.ApiResponse;
 
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.Builder;
 import lombok.Getter;
+import org.springframework.http.HttpStatusCode;
 
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Getter
 public class ApiResponse<T> {
-    private String error;
+    private HttpStatusCode code;
     private String message;
     private T data;
 
-    public ApiResponse(){
-    }
 
-    public ApiResponse(String error, String message, T data){
-        this.error = error;
-        this.message = message;
-        this.data = data;
-    }
-    public ApiResponse(String message, T data ){
+    @Builder
+    public ApiResponse(HttpStatusCode code, String message, T data){
+        this.code = code;
         this.message = message;
         this.data = data;
     }
@@ -27,16 +24,20 @@ public class ApiResponse<T> {
 
 
     public static <T> ApiResponse<T> success(String message, T data) {
-        return new ApiResponse<>(message, data);
+        return ApiResponse.<T>builder()
+                .message(message)
+                .data(data)
+                .build();
     }
 
 
-    public static <T> ApiResponse<T> success(String message){
-        return new ApiResponse<>(message,null);
-    }
 
-    public static <T> ApiResponse<T> failed(String error, T data){
-        return new ApiResponse<>(error, null, data);
+
+    public static <T> ApiResponse<T> failed(HttpStatusCode code, String message) {
+        return ApiResponse.<T>builder()
+                .code(code)
+                .message(message)
+                .build();
     }
 
 }
