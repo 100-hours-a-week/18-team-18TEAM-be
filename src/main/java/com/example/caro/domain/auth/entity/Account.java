@@ -16,4 +16,4 @@ public class Account extends BaseTimeEntity {
     @Column(length = 320, nullable = false)
     private String loginEmail;
     private LocalDateTime loggedAt;
-}
+    }

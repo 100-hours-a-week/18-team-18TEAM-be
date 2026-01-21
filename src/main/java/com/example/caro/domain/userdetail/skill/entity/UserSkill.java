@@ -19,4 +19,8 @@ public class UserSkill {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "skill_id", nullable = false)
     private Skill skill;
+
+    public void setUser(User user) {
+        this.user = user;
+    }
 }

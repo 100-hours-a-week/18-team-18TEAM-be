@@ -37,4 +37,8 @@ public class Activity extends BaseTimeEntity {
 
     @Column(nullable = false)
     private LocalDate winDate;
+
+    public void setUser(User user) {
+        this.user = user;
+    }
 }

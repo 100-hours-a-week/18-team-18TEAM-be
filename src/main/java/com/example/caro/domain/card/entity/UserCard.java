@@ -29,4 +29,8 @@ public class UserCard {
 
     @CreatedDate
     private LocalDateTime createdAt;
+
+    public void setUser(User user) {
+        this.user = user;
+    }
 }

@@ -28,4 +28,12 @@ public class Review extends BaseTimeEntity {
 
     @Column(nullable = false)
     private Integer starScore; // TINYINT
+
+    public void setReviewer(User reviewer) {
+        this.reviewer = reviewer;
+    }
+
+    public void setReviewee(User reviewee) {
+        this.reviewee = reviewee;
+    }
 }
