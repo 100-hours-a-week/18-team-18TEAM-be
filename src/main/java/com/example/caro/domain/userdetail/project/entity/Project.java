@@ -33,4 +33,8 @@ public class Project extends BaseTimeEntity {
 
     @Column(nullable = false)
     private Boolean isProgress; // TINYINT(1) -> Boolean 매핑
+
+    public void setUser(User user) {
+        this.user = user;
+    }
 }

@@ -29,4 +29,8 @@ public class ChatParticipant {
 
     @Column(nullable = false)
     private Integer unreadCount; // SMALLINT -> Integer
+
+    public void setUser(User user) {
+        this.user = user;
+    }
 }

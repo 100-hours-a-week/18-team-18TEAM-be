@@ -24,4 +24,8 @@ public class Link extends BaseTimeEntity { // BaseEntity 활용 (created_at, upd
 
     @Column(length = 2048, nullable = false)
     private String link;
+
+    public void setUser(User user) {
+        this.user = user;
+    }
 }

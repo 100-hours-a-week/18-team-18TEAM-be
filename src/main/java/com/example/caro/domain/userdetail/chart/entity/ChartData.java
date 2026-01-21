@@ -25,4 +25,8 @@ public class ChartData {
 
     @Column(columnDefinition = "TEXT")
     private String description;
+
+    public void setUser(User user) {
+        this.user = user;
+    }
 }

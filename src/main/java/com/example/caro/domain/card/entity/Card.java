@@ -58,5 +58,8 @@ public class Card extends BaseTimeEntity {
 
     @Column(length = 500)
     private String aiImageKey;
-}
 
+    public void setUser(User user) {
+        this.user = user;
+    }
+}

@@ -27,4 +27,8 @@ public class AiUsage {
     private Integer totalCount;
 
     private LocalDateTime lastUsedAt;
+
+    public void setUser(User user) {
+        this.user = user;
+    }
 }
