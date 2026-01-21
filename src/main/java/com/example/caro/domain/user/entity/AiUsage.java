@@ -1,6 +1,7 @@
 package com.example.caro.domain.user.entity;
 
 
+import com.example.caro.domain.auth.entity.Account;
 import jakarta.persistence.*;
 import lombok.*;
 
@@ -24,9 +25,13 @@ public class AiUsage {
     private Integer weeklyCount = 3;
 
     @Column(nullable = false)
-    private Integer totalCount;
+    private Integer totalCount = 0;
 
     private LocalDateTime lastUsedAt;
+    public static AiUsage create() {
+        AiUsage aiUsage = new AiUsage();
+        return aiUsage;
+    }
 
     public void setUser(User user) {
         this.user = user;

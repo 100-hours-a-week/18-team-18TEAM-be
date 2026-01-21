@@ -96,6 +96,14 @@ public class User extends BaseTimeEntity {
     @OneToMany(mappedBy = "user")
     private List<Project> projects = new ArrayList<>();
 
+    public static User create(Account account, String name, String email) {
+        User user = new User();
+        user.account = account;
+        user.name = name;
+        user.email = email;
+        return user;
+    }
+
     public void attachAiUsage(AiUsage aiUsage) {
         this.aiUsage = aiUsage;
         if (aiUsage != null) {
