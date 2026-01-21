@@ -6,11 +6,13 @@ import com.example.caro.domain.auth.entity.Account;
 import com.example.caro.domain.auth.entity.OAuth;
 import com.example.caro.domain.auth.repository.AccountRepository;
 import com.example.caro.domain.auth.repository.OAuthRepository;
-import com.example.caro.domain.user.dto.UserResponse;
+import com.example.caro.domain.auth.dto.AccessTokenResponse;
 import com.example.caro.domain.user.entity.AiUsage;
 import com.example.caro.domain.user.entity.User;
 import com.example.caro.domain.user.repository.AiUsageRepository;
 import com.example.caro.domain.user.repository.UserRepository;
+import com.example.caro.security.JwtTokenProvider;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -31,10 +33,11 @@ public class AuthService {
     private final OAuthRepository oAuthRepository;
     private final UserRepository userRepository;
     private final AiUsageRepository aiUsageRepository;
+    private final JwtTokenProvider jwtTokenProvider;
 
 
     @Transactional
-    public UserResponse login(String provider, String code) {
+    public AccessTokenResponse login(String provider, String code) {
         if (!"kakao".equalsIgnoreCase(provider)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported provider: " + provider);
         }
@@ -64,18 +67,11 @@ public class AuthService {
         User user = userRepository.findByAccount(account)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User not found"));
 
-        return new UserResponse(
-                user.getId(),
-                user.getName(),
-                user.getEmail(),
-                user.getPhoneNumber(),
-                user.getLinedNumber(),
-                user.getCompany(),
-                user.getDepartment(),
-                user.getPosition(),
-                null,
-                user.getDescription()
+        String token = jwtTokenProvider.generateAccessToken(
+                String.valueOf(user.getId()),
+                Map.of()
         );
+        return new AccessTokenResponse(token, "Bearer");
     }
 
     @Transactional
