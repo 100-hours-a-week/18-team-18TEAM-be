@@ -24,4 +24,12 @@ public class OAuth {
 
     @Column(nullable = false)
     private String providerId;
+
+    public static OAuth create(Account account, String provider, String providerId) {
+        OAuth oauth = new OAuth();
+        oauth.account = account;
+        oauth.provider = provider;
+        oauth.providerId = providerId;
+        return oauth;
+    }
 }

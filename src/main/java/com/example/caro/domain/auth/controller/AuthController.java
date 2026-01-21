@@ -1,7 +1,7 @@
 package com.example.caro.domain.auth.controller;
 
 import com.example.caro.domain.auth.dto.LoginRequest;
-import com.example.caro.domain.auth.dto.LoginResponse;
+import com.example.caro.domain.user.dto.UserResponse;
 import com.example.caro.domain.auth.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -24,7 +24,7 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login/{provider}")
-    public ResponseEntity<LoginResponse> login(
+    public ResponseEntity<UserResponse> login(
             @PathVariable String provider,
             @Valid @RequestBody LoginRequest request
     ) {

@@ -83,7 +83,7 @@ public class GlobalApiExceptionHandler {
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
 
 
-        log.error("[Internal Server Error] Message: {} | Status: {}", ex.getMessage(), status.value(), ex);
+        log.error("[Internal Server Error] Message: {} | Status: {}", ex.getMessage(), status.value());
 
 
         return ResponseEntity
