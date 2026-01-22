@@ -1,0 +1,119 @@
+name: CI - Dev PR (BE)
+
+on:
+  pull_request:
+    branches: [ "develop" ]
+
+concurrency:
+  group: be-dev-pr-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+env:
+  APP_NAME: "BizKit-BE"
+  APP_STAGE: "dev"
+
+  JAVA_VERSION: "21"
+  S3_PREFIX: "bizkit-build"
+
+jobs:
+  setup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set Up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Setup Gradle (cache)
+        uses: gradle/actions/setup-gradle@v4
+
+      # - name: Unit Test
+      #   run: ./gradlew --no-daemon test
+
+      - name: Build (bootJar)
+        run: ./gradlew --no-daemon clean bootJar -x test
+
+      - name: Extract Version from PR
+        id: ver 
+        shell: bash 
+        run: |
+          set -euo pipefail 
+
+          BODY="${{ github.event.pull_request.body }"
+
+          VERSION=""
+          VERSION="$(echo "$BODY" | sed -nE 's/.*(ReleaseID|releaseid|release-id|Version|version)[[:space:]]*[:=][[:space:]]*([A-Za-z0-9._-]+).*/\2/ip' | head -n1 || true)"
+
+          VERSION="$(echo "$VERSION" | tr -cd 'A-Za-z0-9._-')"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+
+      - name: Configure AWS Credentials (Access Key)
+        if: ${{ github.event.pull_request.head.repo.fork == false }}
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+            
+      - name: Upload Build Artifact to S3
+        if: ${{ github.event.pull_request.head.repo.fork == false }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          JAR_PATH="$(ls -1 build/libs/*.jar | grep -v plain | head -n1)"
+          if [[ -z "$JAR_PATH" ]]; then
+            echo "No jar found in build/libs" >&2
+            ls -al build/libs || true
+            exit 1
+          fi
+
+          OUT_JAR="backend-${VERSION}.jar"
+          cp "$JAR_PATH" "$OUT_JAR"
+
+          SHORT_SHA="${{ github.event.pull_request.head.sha }}"
+          SHORT_SHA="${SHORT_SHA:0:7}"
+          PR_NO="${{ github.event.pull_request.number }}"
+
+          cat > manifest.json <<EOF
+          {
+            "component": "backend",
+            "stage": "${APP_STAGE}",
+            "version": "${VERSION}",
+            "prNumber": ${PR_NO},
+            "commit": "${{ github.event.pull_request.head.sha }}"
+          }
+          EOF
+
+          S3_KEY_BASE="${S3_PREFIX}/${APP_STAGE}/premerge/${VERSION}/${SHORT_SHA}"
+          aws s3 cp "$OUT_JAR" "s3://${{ secrets.S3_BUCKET }}/${S3_KEY_BASE}/${OUT_JAR}"
+          aws s3 cp "manifest.json" "s3://${{ secrets.S3_BUCKET }}/${S3_KEY_BASE}/manifest.json"
+
+      - name: Notify Discord on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          MESSAGE="BE Dev PR CI 실패
+          Repo: \`${{ github.repository }}\`
+          Branch: \`${{ github.head_ref || github.ref_name }}\`
+          Workflow: \`${{ github.workflow }}\`
+          Job: \`${{ github.job }}\`
+          Author: \`${{ github.actor }}\`
+          Stage: \`${APP_STAGE}\`
+          Version: \`${VERSION}\`
+          링크: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          JSON_MESSAGE=$(printf '%s\n' "$MESSAGE" | python3 -c 'import json,sys; print(json.dumps({"content": sys.stdin.read()}))')
+
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -d "$JSON_MESSAGE" \
+            "$DISCORD_WEBHOOK_URL"
