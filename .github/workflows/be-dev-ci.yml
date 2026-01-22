@@ -47,12 +47,11 @@ jobs:
 
           BODY="${{ github.event.pull_request.body }}"
 
-          VERSION=""
-          VERSION="$(echo "$BODY" | sed -nE 's/.*(ReleaseID|releaseid|release-id|Version|version)[[:space:]]*[:=][[:space:]]*([A-Za-z0-9._-]+).*/\2/ip' | head -n1 || true)"
+          VERSION="$(echo "$BODY" | sed -nE 's/.*Release[[:space:]]*:[[:space:]]*([A-Za-z0-9._-]+).*/\1/ip' | head -n1 || true)"
 
           VERSION="$(echo "$VERSION" | tr -cd 'A-Za-z0-9._-')"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
       - name: Configure AWS Credentials (Access Key)
         if: ${{ github.event.pull_request.head.repo.fork == false }}
