@@ -45,7 +45,7 @@ jobs:
         run: |
           set -euo pipefail 
 
-          BODY="${{ github.event.pull_request.body }"
+          BODY="${{ github.event.pull_request.body }}"
 
           VERSION=""
           VERSION="$(echo "$BODY" | sed -nE 's/.*(ReleaseID|releaseid|release-id|Version|version)[[:space:]]*[:=][[:space:]]*([A-Za-z0-9._-]+).*/\2/ip' | head -n1 || true)"
