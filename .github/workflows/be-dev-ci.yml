@@ -33,11 +33,11 @@ jobs:
       - name: Setup Gradle (cache)
         uses: gradle/actions/setup-gradle@v4
 
-      # - name: Unit Test
-      #   run: ./gradlew --no-daemon test
+      - name: Unit Test
+        run: ./gradlew --no-daemon test
 
       - name: Build (bootJar)
-        run: ./gradlew --no-daemon clean bootJar -x test
+        run: ./gradlew --no-daemon clean bootJar -x test --build-cache
 
       - name: Extract Version from PR
         id: ver 
@@ -67,6 +67,8 @@ jobs:
         run: |
           set -euo pipefail
 
+          BUCKET="${{ secrets.S3_BUCKET }}"
+
           JAR_PATH="$(ls -1 build/libs/*.jar | grep -v plain | head -n1)"
           if [[ -z "$JAR_PATH" ]]; then
             echo "No jar found in build/libs" >&2
@@ -79,7 +81,15 @@ jobs:
 
           SHORT_SHA="${{ github.event.pull_request.head.sha }}"
           SHORT_SHA="${SHORT_SHA:0:7}"
-          PR_NO="${{ github.event.pull_request.number }}"
+          
+          S3_KEY_BASE="${S3_PREFIX}/${APP_STAGE}/premerge/${VERSION}/${SHORT_SHA}"
+          JAR_KEY="${S3_KEY_BASE}/${OUT_JAR}"
+          MANIFEST_KEY="${S3_KEY_BASE}/manifest.json"
+
+          if aws s3api head-object --bucket "$BUCKET" --key "$JAR_KEY" >/dev/null 2>&1; then
+            echo "S3 already has $JAR_KEY -> skip upload"
+            exit 0
+          fi
 
           cat > manifest.json <<EOF
           {
@@ -91,7 +101,6 @@ jobs:
           }
           EOF
 
-          S3_KEY_BASE="${S3_PREFIX}/${APP_STAGE}/premerge/${VERSION}/${SHORT_SHA}"
           aws s3 cp "$OUT_JAR" "s3://${{ secrets.S3_BUCKET }}/${S3_KEY_BASE}/${OUT_JAR}"
           aws s3 cp "manifest.json" "s3://${{ secrets.S3_BUCKET }}/${S3_KEY_BASE}/manifest.json"
 
