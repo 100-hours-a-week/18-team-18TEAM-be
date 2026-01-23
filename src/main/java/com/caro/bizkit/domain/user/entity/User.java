@@ -60,6 +60,38 @@ public class User extends BaseTimeEntity {
         return user;
     }
 
+    public void updateName(String name) {
+        this.name = name;
+    }
+
+    public void updatePhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public void updateLinedNumber(String linedNumber) {
+        this.linedNumber = linedNumber;
+    }
+
+    public void updateCompany(String company) {
+        this.company = company;
+    }
+
+    public void updateDepartment(String department) {
+        this.department = department;
+    }
+
+    public void updatePosition(String position) {
+        this.position = position;
+    }
+
+    public void updateProfileImageKey(String profileImageKey) {
+        this.profileImageKey = profileImageKey;
+    }
+
+    public void updateDescription(String description) {
+        this.description = description;
+    }
+
 
 
 

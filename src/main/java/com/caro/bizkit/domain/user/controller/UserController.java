@@ -2,11 +2,14 @@ package com.caro.bizkit.domain.user.controller;
 
 import com.caro.bizkit.common.ApiResponse.ApiResponse;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
+import com.caro.bizkit.domain.user.dto.UserRequest;
 import com.caro.bizkit.domain.user.dto.UserResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -30,6 +33,15 @@ public class UserController {
     public ResponseEntity<ApiResponse<UserResponse>> getMyStatus(@AuthenticationPrincipal UserPrincipal user) {
         UserResponse userResponse =  userService.getMyStatus(user);
         return ResponseEntity.ok(ApiResponse.success("내 정보 조회 성공", userResponse));
+    }
+
+    @PatchMapping("/me")
+    public ResponseEntity<?> updateMyStatus(
+            @AuthenticationPrincipal UserPrincipal user,
+            @RequestBody UserRequest request
+    ) {
+        UserResponse userResponse = userService.updateMyStatus(user, request);
+        return ResponseEntity.ok(ApiResponse.success("내 정보 수정 성공", userResponse));
     }
 
 }
