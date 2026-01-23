@@ -17,6 +17,29 @@ if [[ -f "${REV_DIR}/codedeploy/be/env.sh" ]]; then
 fi
 
 : "${RELEASE_ID:?RELEASE_ID is required}"
+: "${JAR_URL:?JAR_URL is required}"
+
+# ---- download jar to the path deploy-be.sh expects ----
+ARTIFACT_DIR="/home/ubuntu/artifact/be"
+JAR_PATH="${ARTIFACT_DIR}/bizkit-be-${RELEASE_ID}.jar"
+
+sudo mkdir -p "${ARTIFACT_DIR}"
+
+echo "[start.sh] download jar -> ${JAR_PATH}"
+# curl이 없을 수도 있으니 둘 중 가능한 걸로
+if command -v curl >/dev/null 2>&1; then
+  curl -fsSL "${JAR_URL}" -o "/tmp/bizkit-be-${RELEASE_ID}.jar"
+elif command -v wget >/dev/null 2>&1; then
+  wget -qO "/tmp/bizkit-be-${RELEASE_ID}.jar" "${JAR_URL}"
+else
+  echo "[start.sh] neither curl nor wget is installed" >&2
+  exit 10
+fi
+
+sudo mv "/tmp/bizkit-be-${RELEASE_ID}.jar" "${JAR_PATH}"
+sudo chmod 0644 "${JAR_PATH}"
+ls -al "${JAR_PATH}" || true
 
 chmod +x "${REV_DIR}/deploy-be.sh"
 exec "${REV_DIR}/deploy-be.sh" "${RELEASE_ID}"
+
