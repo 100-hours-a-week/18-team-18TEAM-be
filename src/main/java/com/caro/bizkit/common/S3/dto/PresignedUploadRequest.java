@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 public record PresignedUploadRequest(
 
         @NotNull(message = "업로드 카테고리는 필수입니다.")
-        UploadCategory type,
+        UploadCategory category,
 
         @NotBlank(message = "파일명은 필수입니다.")
         String originalFilename,

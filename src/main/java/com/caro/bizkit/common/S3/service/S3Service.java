@@ -40,7 +40,7 @@ public class S3Service {
 
     public String createObjectKey(UploadCategory type, String originalFilename) {
         if (type == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "S3 upload type is required");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "S3 upload category is required");
         }
         String cleanedPrefix = type.prefix();
         String datePath = LocalDate.now().toString().replace("-", "/");
