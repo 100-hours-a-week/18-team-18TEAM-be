@@ -86,6 +86,9 @@ jobs:
           JAR_KEY="${S3_KEY_BASE}/${OUT_JAR}"
           MANIFEST_KEY="${S3_KEY_BASE}/manifest.json"
 
+          PR_NO="${{ github.event.pull_request.number }}"
+          echo "PR_NO=$PR_NO" >> "$GITHUB_ENV"
+
           if aws s3api head-object --bucket "$BUCKET" --key "$JAR_KEY" >/dev/null 2>&1; then
             echo "S3 already has $JAR_KEY -> skip upload"
             exit 0
