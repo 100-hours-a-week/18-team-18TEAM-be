@@ -6,18 +6,45 @@ import com.caro.bizkit.common.ApiResponse.ApiResponse;
 import com.caro.bizkit.common.exception.CustomException;
 import com.caro.bizkit.common.exception.KakaoOAuthException;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.WebRequest;
+
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
 
 @Slf4j
 @RestControllerAdvice(annotations = RestController.class)
-public class GlobalApiExceptionHandler {
+public class GlobalApiExceptionHandler extends ResponseEntityExceptionHandler {
+
+
+
+    @Override
+    protected ResponseEntity<Object> handleExceptionInternal(
+            Exception ex, Object body, HttpHeaders headers, HttpStatusCode statusCode, WebRequest request) {
+
+
+
+
+        String safeMessage = "요청이 올바르지 않습니다.";
+
+        // 만약 여기서 500이 잡혔다면(JSON 변환 실패 등), 메시지를 숨겨야 함
+        if (statusCode.is5xxServerError()) {
+            safeMessage = "서버 내부 오류가 발생했습니다.";
+        }
+        log.error("Error: {} | Status: {}", ex.getMessage(), statusCode);
+
+        return ResponseEntity
+                .status(statusCode)
+                .body(ApiResponse.failed(statusCode, safeMessage));
+    }
 
     @ExceptionHandler(CustomException.class)
     public ResponseEntity<ApiResponse<String>> handleCustomException(CustomException ex) {
@@ -67,6 +94,14 @@ public class GlobalApiExceptionHandler {
                 .status(statusCode)
                 .body(ApiResponse.failed(statusCode, message));
     }
+
+//    @ExceptionHandler(HttpMessageNotReadableException.class)
+//    public ResponseEntity<Object> handleBadJson(HttpMessageNotReadableException ex) {
+//
+//        return ResponseEntity
+//                .status(HttpStatus.BAD_REQUEST)
+//                .body(ApiResponse.failed(HttpStatus.BAD_REQUEST, "json 형식이 맞지 않습니다."));
+//    }
 
 
 
