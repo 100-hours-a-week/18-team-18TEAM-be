@@ -33,7 +33,7 @@ fi
 
 mkdir -p "${BACKUP_DIR}"
 
-# --- backup current (if exists) ---
+# --- backup current ---
 PREV_ID=""
 if [[ -f "${CURRENT_FILE}" ]]; then
   PREV_ID="$(cat "${CURRENT_FILE}" | tr -d '\r' | xargs || true)"
