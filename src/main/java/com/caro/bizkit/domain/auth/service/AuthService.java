@@ -83,7 +83,7 @@ public class AuthService {
         oAuthRepository.save(oauth);
 
         User user = User.create(savedAccount, nickname, loginEmail);
-        AiUsage aiUsage = AiUsage.create();
+        AiUsage aiUsage = AiUsage.create(user);
         userRepository.save(user);
         aiUsageRepository.save(aiUsage);
         log.info("Account created: {}", savedAccount);
