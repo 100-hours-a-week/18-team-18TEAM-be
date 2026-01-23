@@ -26,9 +26,12 @@ public class AiUsage {
     @Column(nullable = false)
     private Integer totalCount = 0;
 
+
     private LocalDateTime lastUsedAt;
-    public static AiUsage create() {
+
+    public static AiUsage create(User user) {
         AiUsage aiUsage = new AiUsage();
+        aiUsage.user = user;
         return aiUsage;
     }
 
