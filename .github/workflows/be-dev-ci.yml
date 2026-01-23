@@ -76,7 +76,7 @@ jobs:
             exit 1
           fi
 
-          OUT_JAR="backend-${VERSION}.jar"
+          OUT_JAR="bizkit-be-${VERSION}.jar"
           cp "$JAR_PATH" "$OUT_JAR"
 
           SHORT_SHA="${{ github.event.pull_request.head.sha }}"
@@ -85,7 +85,7 @@ jobs:
           S3_KEY_BASE="${S3_PREFIX}/${APP_STAGE}/premerge/${VERSION}/${SHORT_SHA}"
           JAR_KEY="${S3_KEY_BASE}/${OUT_JAR}"
           MANIFEST_KEY="${S3_KEY_BASE}/manifest.json"
-
+          
           PR_NO="${{ github.event.pull_request.number }}"
           echo "PR_NO=$PR_NO" >> "$GITHUB_ENV"
 
