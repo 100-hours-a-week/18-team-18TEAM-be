@@ -3,6 +3,7 @@ package com.caro.bizkit.domain.user.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.springframework.data.annotation.LastModifiedDate;
 
 import java.time.LocalDateTime;
 
@@ -27,6 +28,7 @@ public class AiUsage {
     private Integer totalCount = 0;
 
 
+    @LastModifiedDate
     private LocalDateTime lastUsedAt;
 
     public static AiUsage create(User user) {
