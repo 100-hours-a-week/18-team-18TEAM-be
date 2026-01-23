@@ -71,7 +71,7 @@ public class AuthService {
                 String.valueOf(user.getId()),
                 Map.of()
         );
-        return new AccessTokenResponse(token, "Bearer");
+        return new AccessTokenResponse(token);
     }
 
     @Transactional
@@ -84,7 +84,6 @@ public class AuthService {
 
         User user = User.create(savedAccount, nickname, loginEmail);
         AiUsage aiUsage = AiUsage.create();
-        user.attachAiUsage(aiUsage);
         userRepository.save(user);
         aiUsageRepository.save(aiUsage);
         log.info("Account created: {}", savedAccount);
