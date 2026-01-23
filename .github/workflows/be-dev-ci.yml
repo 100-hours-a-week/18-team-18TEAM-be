@@ -13,7 +13,7 @@ env:
   APP_STAGE: "dev"
 
   JAVA_VERSION: "21"
-  S3_PREFIX: "bizkit-build"
+  S3_PREFIX: "artifacts"
 
 jobs:
   setup:
