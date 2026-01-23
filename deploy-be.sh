@@ -3,7 +3,7 @@ set -euo pipefail
 
 BASE="/home/ubuntu"
 
-SERVICE_UNIT="caro-backend.service"
+SERVICE_UNIT="bizkit-backend.service"
 ENV_FILE="${BASE}/.env-be"
 
 ARTIFACT_DIR="${BASE}/artifact/be"
@@ -12,7 +12,7 @@ BACKUP_DIR="${BASE}/backup/be"
 CURRENT_FILE="${ARTIFACT_DIR}/.current_version"
 
 RELEASE_ID="${1:-}"
-JAR_PATH="${ARTIFACT_DIR}/caro-be-${RELEASE_ID}.jar"
+JAR_PATH="${ARTIFACT_DIR}/bizkit-be-${RELEASE_ID}.jar"
 
 HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:8080/actuator/health}"
 
@@ -39,9 +39,9 @@ if [[ -f "${CURRENT_FILE}" ]]; then
   PREV_ID="$(cat "${CURRENT_FILE}" | tr -d '\r' | xargs || true)"
 fi
 
-if [[ -n "${PREV_ID}" && -f "${ARTIFACT_DIR}/caro-be-${PREV_ID}.jar" ]]; then
-  cp -f "${ARTIFACT_DIR}/caro-be-${PREV_ID}.jar" "${BACKUP_DIR}/caro-be-${PREV_ID}.jar"
-  cp -f "${ENV_FILE}" "${BACKUP_DIR}/caro-be-${PREV_ID}.env"
+if [[ -n "${PREV_ID}" && -f "${ARTIFACT_DIR}/bizkit-be-${PREV_ID}.jar" ]]; then
+  cp -f "${ARTIFACT_DIR}/bizkit-be-${PREV_ID}.jar" "${BACKUP_DIR}/bizkit-be-${PREV_ID}.jar"
+  cp -f "${ENV_FILE}" "${BACKUP_DIR}/bizkit-be-${PREV_ID}.env"
   echo "[deploy-be] backup prev=${PREV_ID} -> ${BACKUP_DIR}"
 else
   echo "[deploy-be] no previous version to backup (first deploy?)"
@@ -80,8 +80,8 @@ fi
 # --- auto rollback to prev (so CodeDeploy fails but service is restored) ---
 echo "[deploy-be] FAILED healthcheck. try rollback to prev=${PREV_ID}" >&2
 
-if [[ -n "${PREV_ID}" && -f "${ARTIFACT_DIR}/caro-be-${PREV_ID}.jar" ]]; then
-  PREV_JAR="${ARTIFACT_DIR}/caro-be-${PREV_ID}.jar"
+if [[ -n "${PREV_ID}" && -f "${ARTIFACT_DIR}/bizkit-be-${PREV_ID}.jar" ]]; then
+  PREV_JAR="${ARTIFACT_DIR}/bizkit-be-${PREV_ID}.jar"
   sudo tee "${OVERRIDE_DIR}/override.conf" >/dev/null <<EOF
 [Service]
 EnvironmentFile=-${ENV_FILE}
@@ -92,8 +92,8 @@ EOF
   sudo systemctl daemon-reload
   sudo systemctl restart "${SERVICE_UNIT}"
 
-  curl -fsS --max-time 2 "${HEALTH_URL}" >/dev/null &&
-    echo "[deploy-be] ROLLBACK OK -> ${PREV_ID}" >&2 ||
+  curl -fsS --max-time 2 "${HEALTH_URL}" >/dev/null && \
+    echo "[deploy-be] ROLLBACK OK -> ${PREV_ID}" >&2 || \
     echo "[deploy-be] ROLLBACK ALSO FAILED" >&2
 fi
 
