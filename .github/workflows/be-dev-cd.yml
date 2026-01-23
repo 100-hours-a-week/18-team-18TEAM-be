@@ -110,9 +110,11 @@ jobs:
           cp -r codedeploy/be/hooks/* bundle/codedeploy/be/hooks/
 
           # 런타임 값 주입(Release ID, jar presigned url)
+          ESCAPED_JAR_URL=$(printf "%s" "$JAR_URL" | sed "s/'/'\\\\''/g")
+
           cat > bundle/codedeploy/be/env.sh <<EOF
-          RELEASE_ID=${VERSION}
-          JAR_URL=${JAR_URL}
+          RELEASE_ID='${VERSION}'
+          JAR_URL='${ESCAPED_JAR_URL}'
           EOF
 
           (cd bundle && zip -r ../bundle.zip .)
