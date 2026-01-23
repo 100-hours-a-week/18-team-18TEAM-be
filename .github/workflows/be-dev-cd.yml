@@ -1,100 +1,159 @@
-#!/usr/bin/env bash
-set -euo pipefail
+name: CD - Dev Deploy (BE, CodeDeploy)
 
-BASE="/home/ubuntu"
+on:
+  pull_request:
+    branches: ["develop"]
+    types: [closed]
 
-SERVICE_UNIT="bizkit-backend.service"
-ENV_FILE="${BASE}/.env-be"
+concurrency:
+  group: be-dev-cd-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
 
-ARTIFACT_DIR="${BASE}/artifact/be"
-BACKUP_DIR="${BASE}/backup/be"
+jobs:
+  deploy:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
 
-CURRENT_FILE="${ARTIFACT_DIR}/.current_version"
+    env:
+      APP_STAGE: dev
+      S3_PREFIX: bizkit-build
+      HEALTH_URL: http://127.0.0.1:8080/actuator/health
 
-RELEASE_ID="${1:-}"
-JAR_PATH="${ARTIFACT_DIR}/bizkit-be-${RELEASE_ID}.jar"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
 
-HEALTH_URL="${HEALTH_URL:-http://127.0.0.1:8080/actuator/health}"
+      - name: Extract Version from PR body
+        id: ver
+        shell: bash
+        run: |
+          set -euo pipefail
 
-if [[ -z "${RELEASE_ID}" ]]; then
-  echo "[deploy-be] missing RELEASE_ID. usage: deploy-be.sh <version>" >&2
-  exit 2
-fi
+          PR_NO="${{ github.event.pull_request.number }}"
+          echo "PR_NO=$PR_NO" >> "$GITHUB_ENV"
 
-if [[ ! -f "${JAR_PATH}" ]]; then
-  echo "[deploy-be] jar not found: ${JAR_PATH}" >&2
-  exit 3
-fi
+          BODY="${{ github.event.pull_request.body }}"
+          VERSION="$(echo "$BODY" | sed -nE 's/.*Release[[:space:]]*:[[:space:]]*([A-Za-z0-9._-]+).*/\1/ip' | head -n1 || true)"
+          VERSION="$(echo "$VERSION" | tr -cd 'A-Za-z0-9._-')"
 
-if [[ ! -f "${ENV_FILE}" ]]; then
-  echo "[deploy-be] env not found: ${ENV_FILE}" >&2
-  exit 4
-fi
+          if [[ -z "$VERSION" ]]; then
+            echo "PR body must include: Release: <version> (ex: Release: v0.1.1)" >&2
+            exit 1
+          fi
 
-mkdir -p "${BACKUP_DIR}"
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
 
-# --- backup current (if exists) ---
-PREV_ID=""
-if [[ -f "${CURRENT_FILE}" ]]; then
-  PREV_ID="$(cat "${CURRENT_FILE}" | tr -d '\r' | xargs || true)"
-fi
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          SHORT_SHA="${HEAD_SHA:0:7}"
+          echo "HEAD_SHA=$HEAD_SHA" >> "$GITHUB_ENV"
+          echo "SHORT_SHA=$SHORT_SHA" >> "$GITHUB_ENV"
 
-if [[ -n "${PREV_ID}" && -f "${ARTIFACT_DIR}/bizkit-be-${PREV_ID}.jar" ]]; then
-  cp -f "${ARTIFACT_DIR}/bizkit-be-${PREV_ID}.jar" "${BACKUP_DIR}/bizkit-be-${PREV_ID}.jar"
-  cp -f "${ENV_FILE}" "${BACKUP_DIR}/bizkit-be-${PREV_ID}.env"
-  echo "[deploy-be] backup prev=${PREV_ID} -> ${BACKUP_DIR}"
-else
-  echo "[deploy-be] no previous version to backup (first deploy?)"
-fi
+      - name: Configure AWS Credentials (Access Key)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
 
-# --- apply systemd override to point ExecStart at this versioned jar ---
-OVERRIDE_DIR="/etc/systemd/system/${SERVICE_UNIT}.d"
-sudo mkdir -p "${OVERRIDE_DIR}"
+      - name: Compute S3 keys
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUCKET="${{ secrets.S3_BUCKET }}"
 
-sudo tee "${OVERRIDE_DIR}/override.conf" >/dev/null <<EOF
-[Service]
-EnvironmentFile=-${ENV_FILE}
-ExecStart=
-ExecStart=/usr/bin/java -XX:+ExitOnOutOfMemoryError -jar ${JAR_PATH} --server.port=8080 --server.address=0.0.0.0
-EOF
+          PREMERGE_KEY="${S3_PREFIX}/${APP_STAGE}/premerge/${VERSION}/${SHORT_SHA}/bizkit-be-${VERSION}.jar"
+          RELEASE_KEY="${S3_PREFIX}/${APP_STAGE}/releases/${VERSION}/bizkit-be-${VERSION}.jar"
 
-sudo systemctl daemon-reload
-sudo systemctl restart "${SERVICE_UNIT}"
+          echo "BUCKET=$BUCKET" >> "$GITHUB_ENV"
+          echo "PREMERGE_KEY=$PREMERGE_KEY" >> "$GITHUB_ENV"
+          echo "RELEASE_KEY=$RELEASE_KEY" >> "$GITHUB_ENV"
 
-# --- health check (up to 30s) ---
-ok=0
-for i in $(seq 1 30); do
-  if curl -fsS --max-time 2 "${HEALTH_URL}" >/dev/null; then
-    ok=1
-    break
-  fi
-  sleep 1
-done
+      - name: Promote premerge artifact -> release key (S3 copy)
+        shell: bash
+        run: |
+          set -euo pipefail
 
-if [[ "${ok}" -eq 1 ]]; then
-  echo "${RELEASE_ID}" | sudo tee "${CURRENT_FILE}" >/dev/null
-  echo "[deploy-be] SUCCESS version=${RELEASE_ID}"
-  exit 0
-fi
+          aws s3api head-object --bucket "$BUCKET" --key "$PREMERGE_KEY" >/dev/null
 
-# --- auto rollback to prev (so CodeDeploy fails but service is restored) ---
-echo "[deploy-be] FAILED healthcheck. try rollback to prev=${PREV_ID}" >&2
+          # 릴리즈 키에 이미 있으면 스킵
+          if aws s3api head-object --bucket "$BUCKET" --key "$RELEASE_KEY" >/dev/null 2>&1; then
+            echo "release artifact already exists: s3://$BUCKET/$RELEASE_KEY"
+            exit 0
+          fi
 
-if [[ -n "${PREV_ID}" && -f "${ARTIFACT_DIR}/bizkit-be-${PREV_ID}.jar" ]]; then
-  PREV_JAR="${ARTIFACT_DIR}/bizkit-be-${PREV_ID}.jar"
-  sudo tee "${OVERRIDE_DIR}/override.conf" >/dev/null <<EOF
-[Service]
-EnvironmentFile=-${ENV_FILE}
-ExecStart=
-ExecStart=/usr/bin/java -XX:+ExitOnOutOfMemoryError -jar ${PREV_JAR} --server.port=8080 --server.address=0.0.0.0
-EOF
+          aws s3api copy-object \
+            --bucket "$BUCKET" \
+            --copy-source "$BUCKET/$PREMERGE_KEY" \
+            --key "$RELEASE_KEY"
 
-  sudo systemctl daemon-reload
-  sudo systemctl restart "${SERVICE_UNIT}"
+          echo "promoted -> s3://$BUCKET/$RELEASE_KEY"
 
-  curl -fsS --max-time 2 "${HEALTH_URL}" >/dev/null && \
-    echo "[deploy-be] ROLLBACK OK -> ${PREV_ID}" >&2 || \
-    echo "[deploy-be] ROLLBACK ALSO FAILED" >&2
-fi
+      - name: Create presigned URL for jar (1h)
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR_URL="$(aws s3 presign "s3://$BUCKET/$RELEASE_KEY" --expires-in 3600)"
+          echo "JAR_URL=$JAR_URL" >> "$GITHUB_ENV"
 
-exit 1
+      - name: Build CodeDeploy bundle (appspec + hooks + deploy-be.sh)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm -rf bundle && mkdir -p bundle/codedeploy/be/hooks
+
+          # appspec + hooks + deploy script 포함
+          cp codedeploy/be/appspec.yml bundle/appspec.yml
+          cp deploy-be.sh bundle/deploy-be.sh
+          cp -r codedeploy/be/hooks/* bundle/codedeploy/be/hooks/
+
+          # 런타임 값 주입(Release ID, jar presigned url)
+          cat > bundle/codedeploy/be/env.sh <<EOF
+          RELEASE_ID=${VERSION}
+          JAR_URL=${JAR_URL}
+          EOF
+
+          (cd bundle && zip -r ../bundle.zip .)
+
+      - name: Upload bundle.zip to S3
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUNDLE_KEY="${S3_PREFIX}/${APP_STAGE}/codedeploy/be/${VERSION}/bundle-${{ github.run_id }}.zip"
+          aws s3 cp bundle.zip "s3://$BUCKET/$BUNDLE_KEY"
+          echo "BUNDLE_KEY=$BUNDLE_KEY" >> "$GITHUB_ENV"
+
+      - name: Create CodeDeploy deployment & wait
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APP="${{ secrets.CODEDEPLOY_APP_BE_DEV }}"
+          DG="${{ secrets.CODEDEPLOY_DG_BE_DEV }}"
+
+          DEPLOY_ID="$(aws deploy create-deployment \
+            --application-name "$APP" \
+            --deployment-group-name "$DG" \
+            --s3-location bucket="$BUCKET",key="$BUNDLE_KEY",bundleType=zip \
+            --file-exists-behavior OVERWRITE \
+            --query "deploymentId" --output text)"
+
+          echo "deploymentId=$DEPLOY_ID"
+          aws deploy wait deployment-successful --deployment-id "$DEPLOY_ID"
+          echo "CodeDeploy SUCCESS"
+
+      - name: Notify Discord on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          MESSAGE="BE Dev CD 실패
+          Repo: \`${{ github.repository }}\`
+          PR: #${{ github.event.pull_request.number }}
+          Version: \`${VERSION}\`
+          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          JSON_MESSAGE=$(printf '%s\n' "$MESSAGE" | python3 -c 'import json,sys; print(json.dumps({"content": sys.stdin.read()}))')
+          curl -X POST -H "Content-Type: application/json" -d "$JSON_MESSAGE" "$DISCORD_WEBHOOK_URL"
