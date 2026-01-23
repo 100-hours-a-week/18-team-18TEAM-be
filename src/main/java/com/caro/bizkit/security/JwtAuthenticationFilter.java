@@ -1,7 +1,7 @@
 package com.caro.bizkit.security;
 
 import com.caro.bizkit.common.ApiResponse.ApiResponse;
-import com.caro.bizkit.domain.user.dto.UserResponse;
+import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.user.entity.User;
 import com.caro.bizkit.domain.user.repository.UserRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -78,7 +78,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
 
-        UserResponse principal = new UserResponse(
+        UserPrincipal principal = new UserPrincipal(
                 user.getId(),
                 user.getName(),
                 user.getEmail(),
