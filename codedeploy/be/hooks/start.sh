@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-REV_DIR="${DEPLOYMENT_ROOT:-$(pwd)}"
+REV_DIR="$(pwd)"
 
 if [[ -f "${REV_DIR}/codedeploy/be/env.sh" ]]; then
+  # shellcheck disable=SC1091
   source "${REV_DIR}/codedeploy/be/env.sh"
 fi
 
