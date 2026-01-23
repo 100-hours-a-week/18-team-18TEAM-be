@@ -20,4 +20,3 @@ fi
 
 chmod +x "${REV_DIR}/deploy-be.sh"
 exec "${REV_DIR}/deploy-be.sh" "${RELEASE_ID}"
-
