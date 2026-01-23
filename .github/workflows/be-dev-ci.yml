@@ -13,7 +13,7 @@ env:
   APP_STAGE: "dev"
 
   JAVA_VERSION: "21"
-  S3_PREFIX: "bizkit-build"
+  S3_PREFIX: "artifacts"
 
 jobs:
   setup:
@@ -33,8 +33,8 @@ jobs:
       - name: Setup Gradle (cache)
         uses: gradle/actions/setup-gradle@v4
 
-      # - name: Unit Test
-      #   run: ./gradlew --no-daemon test
+      - name: Unit Test
+        run: ./gradlew --no-daemon test
 
       - name: Build (bootJar)
         run: ./gradlew --no-daemon clean bootJar -x test --build-cache
@@ -85,7 +85,7 @@ jobs:
           S3_KEY_BASE="${S3_PREFIX}/${APP_STAGE}/premerge/${VERSION}/${SHORT_SHA}"
           JAR_KEY="${S3_KEY_BASE}/${OUT_JAR}"
           MANIFEST_KEY="${S3_KEY_BASE}/manifest.json"
- 
+          
           PR_NO="${{ github.event.pull_request.number }}"
           echo "PR_NO=$PR_NO" >> "$GITHUB_ENV"
 
