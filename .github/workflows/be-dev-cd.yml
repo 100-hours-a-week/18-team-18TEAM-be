@@ -92,8 +92,8 @@ EOF
   sudo systemctl daemon-reload
   sudo systemctl restart "${SERVICE_UNIT}"
 
-  curl -fsS --max-time 2 "${HEALTH_URL}" >/dev/null &&
-    echo "[deploy-be] ROLLBACK OK -> ${PREV_ID}" >&2 ||
+  curl -fsS --max-time 2 "${HEALTH_URL}" >/dev/null && \
+    echo "[deploy-be] ROLLBACK OK -> ${PREV_ID}" >&2 || \
     echo "[deploy-be] ROLLBACK ALSO FAILED" >&2
 fi
 
