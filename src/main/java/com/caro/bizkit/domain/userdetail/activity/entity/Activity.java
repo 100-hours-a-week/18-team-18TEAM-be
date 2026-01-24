@@ -6,6 +6,7 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.SQLDelete;
 
 import java.time.LocalDate;
 
@@ -13,6 +14,7 @@ import java.time.LocalDate;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "activity")
+@SQLDelete(sql = "UPDATE activity SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
 public class Activity extends BaseTimeEntity {
 
     @Id

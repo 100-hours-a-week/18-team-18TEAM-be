@@ -11,4 +11,5 @@ public class KakaoOAuthProperties {
     private String clientId;
     private String clientSecret;
     private String redirectUri;
+    private String adminKey;
 }
