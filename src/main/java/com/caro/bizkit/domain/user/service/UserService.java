@@ -1,12 +1,23 @@
 package com.caro.bizkit.domain.user.service;
 
 import com.caro.bizkit.common.S3.service.S3Service;
+import com.caro.bizkit.domain.auth.entity.Account;
+import com.caro.bizkit.domain.auth.entity.OAuth;
+import com.caro.bizkit.domain.auth.repository.AccountRepository;
+import com.caro.bizkit.domain.auth.repository.OAuthRepository;
+import com.caro.bizkit.domain.auth.service.KakaoOAuthClient;
+import com.caro.bizkit.domain.auth.service.KakaoOAuthProperties;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.user.dto.UserRequest;
 import com.caro.bizkit.domain.user.dto.UserResponse;
 import com.caro.bizkit.domain.user.entity.User;
 import com.caro.bizkit.domain.user.repository.UserRepository;
+import com.caro.bizkit.domain.withdrawl.entity.AccountWithdrawal;
+import com.caro.bizkit.domain.withdrawl.entity.Withdrawal;
+import com.caro.bizkit.domain.withdrawl.repository.AccountWithdrawalRepository;
+import com.caro.bizkit.domain.withdrawl.repository.WithdrawalRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -15,10 +26,17 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class UserService {
 
     private final S3Service s3Service;
     private final UserRepository userRepository;
+    private final AccountRepository accountRepository;
+    private final OAuthRepository oAuthRepository;
+    private final WithdrawalRepository withdrawalRepository;
+    private final AccountWithdrawalRepository accountWithdrawalRepository;
+    private final KakaoOAuthClient kakaoOAuthClient;
+    private final KakaoOAuthProperties kakaoOAuthProperties;
 
     public UserResponse getMyStatus(UserPrincipal user) {
         String profileImageUrl = null;
@@ -66,6 +84,38 @@ public class UserService {
         if (request.description() != null) {
             user.updateDescription(request.description());
         }
+    }
+
+    @Transactional
+    public void withdraw(UserPrincipal principal, Integer reasonId) {
+        if (principal == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized user");
+        }
+
+        User user = userRepository.findById(principal.id())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User not found"));
+        Account account = user.getAccount();
+
+
+
+
+        oAuthRepository.findByAccount(account).ifPresent(oauth -> {
+            unlinkFromKakaoIfNeeded(oauth);
+            oAuthRepository.delete(oauth);
+        });
+
+        accountRepository.delete(account);
+    }
+
+    private void unlinkFromKakaoIfNeeded(OAuth oauth) {
+        if (!"kakao".equalsIgnoreCase(oauth.getProvider())) {
+            log.warn("Unsupported OAuth provider for unlink: {}", oauth.getProvider());
+            return;
+        }
+        kakaoOAuthClient.unlinkUserByAdminKey(
+                kakaoOAuthProperties.getAdminKey(),
+                oauth.getProviderId()
+        );
     }
 
     private UserResponse toResponse(User user) {
