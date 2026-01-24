@@ -4,14 +4,16 @@ import com.caro.bizkit.common.ApiResponse.ApiResponse;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.user.dto.UserRequest;
 import com.caro.bizkit.domain.user.dto.UserResponse;
+import com.caro.bizkit.domain.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PatchMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 
 @RestController
 @RequestMapping("/api/users")
@@ -35,7 +37,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("내 정보 조회 성공", userResponse));
     }
 
-    @PatchMapping("/me")
+    @PutMapping("/me")
     public ResponseEntity<?> updateMyStatus(
             @AuthenticationPrincipal UserPrincipal user,
             @RequestBody UserRequest request
