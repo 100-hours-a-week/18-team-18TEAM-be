@@ -7,7 +7,6 @@ public record UserRequest(
         String company,
         String department,
         String position,
-        String profile_image_key,
-        String description
+        String profile_image_key
 ) {
 }

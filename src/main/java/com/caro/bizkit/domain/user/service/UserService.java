@@ -90,9 +90,7 @@ public class UserService {
         if (request.profile_image_key() != null) {
             user.updateProfileImageKey(request.profile_image_key());
         }
-        if (request.description() != null) {
-            user.updateDescription(request.description());
-        }
+
     }
 
     @Transactional
