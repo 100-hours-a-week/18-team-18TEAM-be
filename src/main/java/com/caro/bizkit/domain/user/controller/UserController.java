@@ -39,6 +39,15 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("내 정보 조회 성공", userResponse));
     }
 
+    @GetMapping("/{user_id}")
+    public ResponseEntity<ApiResponse<UserResponse>> getUserProfile(@PathVariable("user_id") Integer userId) {
+        UserResponse userResponse = userService.getUserProfile(userId);
+        if (userResponse == null) {
+            return ResponseEntity.ok(ApiResponse.success("탈퇴한 회원입니다", null));
+        }
+        return ResponseEntity.ok(ApiResponse.success("사용자 정보 조회 성공", userResponse));
+    }
+
     @PutMapping("/me")
     public ResponseEntity<?> updateMyStatus(
             @AuthenticationPrincipal UserPrincipal user,

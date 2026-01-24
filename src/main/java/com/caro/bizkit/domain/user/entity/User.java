@@ -7,6 +7,7 @@ import com.caro.bizkit.domain.auth.entity.Account;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;
+import java.time.LocalDateTime;
 
 
 
@@ -94,6 +95,9 @@ public class User extends BaseTimeEntity {
         this.description = description;
     }
 
+    public void markDeleted() {
+        this.deletedAt = LocalDateTime.now();
+    }
 
 
 

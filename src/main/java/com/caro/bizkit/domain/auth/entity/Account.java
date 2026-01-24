@@ -28,4 +28,8 @@ public class Account extends BaseTimeEntity {
     public void updateLoggedAt(LocalDateTime loggedAt) {
         this.loggedAt = loggedAt;
     }
+
+    public void markDeleted() {
+        this.deletedAt = LocalDateTime.now();
+    }
 }

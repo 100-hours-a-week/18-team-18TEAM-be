@@ -31,7 +31,6 @@ public class UserService {
 
     private final S3Service s3Service;
     private final UserRepository userRepository;
-    private final AccountRepository accountRepository;
     private final OAuthRepository oAuthRepository;
     private final WithdrawalRepository withdrawalRepository;
     private final AccountWithdrawalRepository accountWithdrawalRepository;
@@ -44,6 +43,16 @@ public class UserService {
             profileImageUrl = s3Service.createReadUrl(user.profile_image_key()).url();
         }
         return UserResponse.fromPrincipal(user, profileImageUrl);
+    }
+
+    @Transactional(readOnly = true)
+    public UserResponse getUserProfile(Integer userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
+        if (user.getDeletedAt() != null) {
+            return null;
+        }
+        return toResponse(user);
     }
 
     @Transactional
@@ -112,7 +121,8 @@ public class UserService {
             oAuthRepository.delete(oauth);
         });
 
-        accountRepository.delete(account);
+        account.markDeleted();
+        user.markDeleted();
     }
 
     private void unlinkFromKakaoIfNeeded(OAuth oauth) {
