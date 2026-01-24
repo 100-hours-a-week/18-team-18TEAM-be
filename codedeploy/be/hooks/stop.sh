@@ -1,4 +1,4 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-systemctl stop caro-backend.service || true
+systemctl stop bizkit-backend.service || true
