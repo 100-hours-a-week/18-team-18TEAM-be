@@ -39,12 +39,11 @@ public class S3Controller {
             )
     })
     public ResponseEntity<PresignedUrlResponse> createUploadUrl(@RequestBody @Valid PresignedUploadRequest request) {
-        String key = s3Service.createObjectKey(request.category(), request.originalFilename());
+        String key = s3Service.createObjectKey(request.category(), request.contentType());
         PresignedUrlResponse response = s3Service.createUploadUrl(key, request.contentType());
         return ResponseEntity.ok(response);
     }
 
-    @Profile("dev")
     @PostMapping("/read")
     @Operation(summary = "읽기 Presigned URL 생성", description = "읽기용 presigned URL을 생성합니다.")
     @ApiResponses({
