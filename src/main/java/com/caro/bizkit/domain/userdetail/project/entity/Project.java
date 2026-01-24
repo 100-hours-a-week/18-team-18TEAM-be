@@ -4,6 +4,7 @@ import com.caro.bizkit.common.entity.BaseTimeEntity;
 import com.caro.bizkit.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
 
 import java.time.LocalDate;
 
@@ -11,6 +12,7 @@ import java.time.LocalDate;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "project")
+@SQLDelete(sql = "UPDATE project SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
 public class Project extends BaseTimeEntity {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)

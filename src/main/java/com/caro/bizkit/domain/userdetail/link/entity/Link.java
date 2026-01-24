@@ -5,11 +5,13 @@ import com.caro.bizkit.common.entity.BaseTimeEntity;
 import com.caro.bizkit.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "link")
+@SQLDelete(sql = "UPDATE link SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
 public class Link extends BaseTimeEntity { // BaseEntity 활용 (created_at, updated_at, deleted_at)
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;

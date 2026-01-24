@@ -12,4 +12,21 @@ public record UserResponse(
         String profile_image_url,
         String description
 ) {
+    public static UserResponse fromPrincipal(UserPrincipal principal, String profileImageUrl) {
+        if (principal == null) {
+            return null;
+        }
+        return new UserResponse(
+                principal.id(),
+                principal.name(),
+                principal.email(),
+                principal.phone_number(),
+                principal.lined_number(),
+                principal.company(),
+                principal.department(),
+                principal.position(),
+                profileImageUrl,
+                principal.description()
+        );
+    }
 }
