@@ -98,6 +98,14 @@ public class UserService {
 
 
 
+        Withdrawal withdrawal = withdrawalRepository.findById(reasonId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid reason id"));
+
+        AccountWithdrawal accountWithdrawal = AccountWithdrawal.create(account, withdrawal);
+        accountWithdrawalRepository.save(accountWithdrawal);
+
+
+
 
         oAuthRepository.findByAccount(account).ifPresent(oauth -> {
             unlinkFromKakaoIfNeeded(oauth);
