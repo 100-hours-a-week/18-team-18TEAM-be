@@ -1,0 +1,158 @@
+name: CD - Prod Deploy (BE, CodeDeploy)
+
+on:
+  pull_request:
+    branches: ["main"]
+    types: [closed]
+
+concurrency:
+  group: be-prod-cd-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event.pull_request.merged == true
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    env:
+      APP_STAGE: prod
+      S3_PREFIX: artifacts
+      HEALTH_URL: http://127.0.0.1:8080/actuator/health
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Extract Version from PR body
+        id: ver
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          PR_NO="${{ github.event.pull_request.number }}"
+          echo "PR_NO=$PR_NO" >> "$GITHUB_ENV"
+
+          BODY="${{ github.event.pull_request.body }}"
+          VERSION="$(echo "$BODY" | sed -nE 's/.*Release[[:space:]]*:[[:space:]]*([A-Za-z0-9._-]+).*/\1/ip' | head -n1 || true)"
+          VERSION="$(echo "$VERSION" | tr -cd 'A-Za-z0-9._-')"
+
+          if [[ -z "$VERSION" ]]; then
+            echo "PR body must include: Release: <version> (ex: Release: v0.1.1)" >&2
+            exit 1
+          fi
+
+          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+
+          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
+          SHORT_SHA="${HEAD_SHA:0:7}"
+          echo "HEAD_SHA=$HEAD_SHA" >> "$GITHUB_ENV"
+          echo "SHORT_SHA=$SHORT_SHA" >> "$GITHUB_ENV"
+
+      - name: Configure AWS Credentials (Access Key)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Compute S3 keys
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUCKET="${{ secrets.S3_BUCKET }}"
+
+          PREMERGE_KEY="${S3_PREFIX}/${APP_STAGE}/premerge/${VERSION}/${SHORT_SHA}/bizkit-be-${VERSION}.jar"
+          RELEASE_KEY="${S3_PREFIX}/${APP_STAGE}/releases/${VERSION}/bizkit-be-${VERSION}.jar"
+
+          echo "BUCKET=$BUCKET" >> "$GITHUB_ENV"
+          echo "PREMERGE_KEY=$PREMERGE_KEY" >> "$GITHUB_ENV"
+          echo "RELEASE_KEY=$RELEASE_KEY" >> "$GITHUB_ENV"
+
+      - name: Promote premerge artifact -> release key (S3 copy)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          aws s3api head-object --bucket "$BUCKET" --key "$PREMERGE_KEY" >/dev/null
+
+          if aws s3api head-object --bucket "$BUCKET" --key "$RELEASE_KEY" >/dev/null 2>&1; then
+            echo "release artifact already exists: s3://$BUCKET/$RELEASE_KEY"
+            exit 0
+          fi
+
+          aws s3api copy-object \
+            --bucket "$BUCKET" \
+            --copy-source "$BUCKET/$PREMERGE_KEY" \
+            --key "$RELEASE_KEY"
+
+          echo "promoted -> s3://$BUCKET/$RELEASE_KEY"
+
+      - name: Create presigned URL for jar (1h)
+        shell: bash
+        run: |
+          set -euo pipefail
+          JAR_URL="$(aws s3 presign "s3://$BUCKET/$RELEASE_KEY" --expires-in 3600)"
+          echo "JAR_URL=$JAR_URL" >> "$GITHUB_ENV"
+
+      - name: Build CodeDeploy bundle (appspec + hooks + deploy-be.sh)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          rm -rf bundle && mkdir -p bundle/codedeploy/be/hooks
+
+          cp codedeploy/be/appspec.yml bundle/appspec.yml
+          cp deploy-be.sh bundle/deploy-be.sh
+          cp -r codedeploy/be/hooks/* bundle/codedeploy/be/hooks/
+
+          cat > bundle/codedeploy/be/env.sh <<EOF
+          RELEASE_ID='${VERSION}'
+          JAR_URL='${JAR_URL}'
+          HEALTH_URL='${HEALTH_URL}'
+          EOF
+
+          (cd bundle && zip -r ../bundle.zip .)
+
+      - name: Upload bundle.zip to S3
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUNDLE_KEY="${S3_PREFIX}/${APP_STAGE}/codedeploy/be/${VERSION}/bundle-${{ github.run_id }}.zip"
+          aws s3 cp bundle.zip "s3://$BUCKET/$BUNDLE_KEY"
+          echo "BUNDLE_KEY=$BUNDLE_KEY" >> "$GITHUB_ENV"
+
+      - name: Create CodeDeploy deployment & wait
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          APP="${{ secrets.CODEDEPLOY_APP_BE_PROD }}"
+          DG="${{ secrets.CODEDEPLOY_DG_BE_PROD }}"
+
+          DEPLOY_ID="$(aws deploy create-deployment \
+            --application-name "$APP" \
+            --deployment-group-name "$DG" \
+            --s3-location bucket="$BUCKET",key="$BUNDLE_KEY",bundleType=zip \
+            --file-exists-behavior OVERWRITE \
+            --query "deploymentId" --output text)"
+
+          echo "deploymentId=$DEPLOY_ID"
+          aws deploy wait deployment-successful --deployment-id "$DEPLOY_ID"
+          echo "CodeDeploy SUCCESS"
+
+      - name: Notify Discord on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          MESSAGE="BE Prod CD 실패
+          Repo: \`${{ github.repository }}\`
+          PR: #${{ github.event.pull_request.number }}
+          Version: \`${VERSION}\`
+          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          JSON_MESSAGE=$(printf '%s\n' "$MESSAGE" | python3 -c 'import json,sys; print(json.dumps({"content": sys.stdin.read()}))')
+          curl -X POST -H "Content-Type: application/json" -d "$JSON_MESSAGE" "$DISCORD_WEBHOOK_URL"
+
