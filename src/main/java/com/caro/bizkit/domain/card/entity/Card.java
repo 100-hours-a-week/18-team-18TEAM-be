@@ -10,7 +10,7 @@ import lombok.*;
 import org.hibernate.annotations.SQLDelete;
 
 import java.time.LocalDate;
-import java.util.UUID;
+import com.github.f4b6a3.uuid.UuidCreator;
 
 @Entity
 @Getter
@@ -77,7 +77,6 @@ public class Card extends BaseTimeEntity {
             String department,
             LocalDate startDate,
             LocalDate endDate,
-            Boolean isProgress,
             String qrImageKey,
             String aiImageKey
     ) {
@@ -93,17 +92,65 @@ public class Card extends BaseTimeEntity {
         card.department = department;
         card.startDate = startDate;
         card.endDate = endDate;
-        card.isProgress = isProgress;
+        card.isProgress = (endDate == null);
         card.qrImageKey = qrImageKey;
         card.aiImageKey = aiImageKey;
         return card;
     }
 
     public static String newUuid() {
-        return UUID.randomUUID().toString();
+        return UuidCreator.getTimeOrderedEpoch().toString();
     }
 
     public void setUser(User user) {
         this.user = user;
+    }
+
+    public void updateName(String name) {
+        this.name = name;
+    }
+
+    public void updateEmail(String email) {
+        this.email = email;
+    }
+
+    public void updatePhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public void updateLinedNumber(String linedNumber) {
+        this.linedNumber = linedNumber;
+    }
+
+    public void updateCompany(String company) {
+        this.company = company;
+    }
+
+    public void updatePosition(String position) {
+        this.position = position;
+    }
+
+    public void updateDepartment(String department) {
+        this.department = department;
+    }
+
+    public void updateStartDate(LocalDate startDate) {
+        this.startDate = startDate;
+    }
+
+    public void updateEndDate(LocalDate endDate) {
+        this.endDate = endDate;
+    }
+
+    public void updateIsProgress(Boolean isProgress) {
+        this.isProgress = isProgress;
+    }
+
+    public void updateQrImageKey(String qrImageKey) {
+        this.qrImageKey = qrImageKey;
+    }
+
+    public void updateAiImageKey(String aiImageKey) {
+        this.aiImageKey = aiImageKey;
     }
 }
