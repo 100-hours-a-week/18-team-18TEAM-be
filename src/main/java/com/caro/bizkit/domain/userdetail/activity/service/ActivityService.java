@@ -67,4 +67,11 @@ public class ActivityService {
         }
         return ActivityResponse.from(activity);
     }
+
+    @PreAuthorize("@activitySecurity.isOwner(#activityId, authentication)")
+    public void deleteMyActivity(UserPrincipal principal, Integer activityId) {
+        Activity activity = activityRepository.findById(activityId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Activity not found"));
+        activityRepository.delete(activity);
+    }
 }
