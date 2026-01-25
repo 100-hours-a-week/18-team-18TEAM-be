@@ -40,6 +40,24 @@ public class Activity extends BaseTimeEntity {
     @Column(nullable = false)
     private LocalDate winDate;
 
+    public static Activity create(
+            User user,
+            String name,
+            String grade,
+            String organization,
+            String content,
+            LocalDate winDate
+    ) {
+        Activity activity = new Activity();
+        activity.user = user;
+        activity.name = name;
+        activity.grade = grade;
+        activity.organization = organization;
+        activity.content = content;
+        activity.winDate = winDate;
+        return activity;
+    }
+
     public void setUser(User user) {
         this.user = user;
     }
