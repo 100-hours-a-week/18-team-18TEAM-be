@@ -55,6 +55,8 @@ public class Card extends BaseTimeEntity {
 
     private LocalDate endDate;
 
+    private Boolean isProgress;
+
     @Column(length = 500)
     private String qrImageKey;
 
