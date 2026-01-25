@@ -10,6 +10,7 @@ import lombok.*;
 import org.hibernate.annotations.SQLDelete;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 @Entity
 @Getter
@@ -55,6 +56,7 @@ public class Card extends BaseTimeEntity {
 
     private LocalDate endDate;
 
+    @Column(nullable = false)
     private Boolean isProgress;
 
     @Column(length = 500)
@@ -62,6 +64,44 @@ public class Card extends BaseTimeEntity {
 
     @Column(length = 500)
     private String aiImageKey;
+
+    public static Card create(
+            User user,
+            String uuid,
+            String name,
+            String email,
+            String phoneNumber,
+            String linedNumber,
+            String company,
+            String position,
+            String department,
+            LocalDate startDate,
+            LocalDate endDate,
+            Boolean isProgress,
+            String qrImageKey,
+            String aiImageKey
+    ) {
+        Card card = new Card();
+        card.user = user;
+        card.uuid = uuid;
+        card.name = name;
+        card.email = email;
+        card.phoneNumber = phoneNumber;
+        card.linedNumber = linedNumber;
+        card.company = company;
+        card.position = position;
+        card.department = department;
+        card.startDate = startDate;
+        card.endDate = endDate;
+        card.isProgress = isProgress;
+        card.qrImageKey = qrImageKey;
+        card.aiImageKey = aiImageKey;
+        return card;
+    }
+
+    public static String newUuid() {
+        return UUID.randomUUID().toString();
+    }
 
     public void setUser(User user) {
         this.user = user;
