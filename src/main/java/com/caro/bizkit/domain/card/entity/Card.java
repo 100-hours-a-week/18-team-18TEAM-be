@@ -10,6 +10,7 @@ import lombok.*;
 import org.hibernate.annotations.SQLDelete;
 
 import java.time.LocalDate;
+import com.github.f4b6a3.uuid.UuidCreator;
 
 @Entity
 @Getter
@@ -55,13 +56,101 @@ public class Card extends BaseTimeEntity {
 
     private LocalDate endDate;
 
+    @Column(nullable = false)
+    private Boolean isProgress;
+
     @Column(length = 500)
     private String qrImageKey;
 
     @Column(length = 500)
     private String aiImageKey;
 
+    public static Card create(
+            User user,
+            String uuid,
+            String name,
+            String email,
+            String phoneNumber,
+            String linedNumber,
+            String company,
+            String position,
+            String department,
+            LocalDate startDate,
+            LocalDate endDate,
+            String qrImageKey,
+            String aiImageKey
+    ) {
+        Card card = new Card();
+        card.user = user;
+        card.uuid = uuid;
+        card.name = name;
+        card.email = email;
+        card.phoneNumber = phoneNumber;
+        card.linedNumber = linedNumber;
+        card.company = company;
+        card.position = position;
+        card.department = department;
+        card.startDate = startDate;
+        card.endDate = endDate;
+        card.isProgress = (endDate == null);
+        card.qrImageKey = qrImageKey;
+        card.aiImageKey = aiImageKey;
+        return card;
+    }
+
+    public static String newUuid() {
+        return UuidCreator.getTimeOrderedEpoch().toString();
+    }
+
     public void setUser(User user) {
         this.user = user;
+    }
+
+    public void updateName(String name) {
+        this.name = name;
+    }
+
+    public void updateEmail(String email) {
+        this.email = email;
+    }
+
+    public void updatePhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public void updateLinedNumber(String linedNumber) {
+        this.linedNumber = linedNumber;
+    }
+
+    public void updateCompany(String company) {
+        this.company = company;
+    }
+
+    public void updatePosition(String position) {
+        this.position = position;
+    }
+
+    public void updateDepartment(String department) {
+        this.department = department;
+    }
+
+    public void updateStartDate(LocalDate startDate) {
+        this.startDate = startDate;
+    }
+
+    public void updateEndDate(LocalDate endDate) {
+        this.endDate = endDate;
+    }
+
+    public void updateIsProgress(Boolean isProgress) {
+        this.isProgress = isProgress;
+    }
+
+    public void updateQrImageKey(String qrImageKey) {
+        this.qrImageKey = qrImageKey;
+    }
+
+    public void updateAiImageKey(String aiImageKey) {
+        this.aiImageKey = aiImageKey;
     }
 }
