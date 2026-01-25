@@ -1,12 +1,15 @@
 package com.caro.bizkit.domain.userdetail.project.controller;
 
 import com.caro.bizkit.common.ApiResponse.ApiResponse;
+import com.caro.bizkit.domain.auth.dto.AccessTokenResponse;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.userdetail.project.dto.ProjectRequest;
 import com.caro.bizkit.domain.userdetail.project.dto.ProjectResponse;
 import com.caro.bizkit.domain.userdetail.project.dto.ProjectUpdateRequest;
 import com.caro.bizkit.domain.userdetail.project.service.ProjectService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
@@ -60,6 +63,7 @@ public class ProjectController {
     @Operation(summary = "내 프로젝트 생성", description = "인증된 사용자의 프로젝트를 생성합니다.")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
+
     })
     public ResponseEntity<ApiResponse<ProjectResponse>> createMyProject(
             @AuthenticationPrincipal UserPrincipal user,
