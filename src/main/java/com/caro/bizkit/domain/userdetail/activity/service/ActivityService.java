@@ -28,6 +28,12 @@ public class ActivityService {
                 .toList();
     }
 
+    public List<ActivityResponse> getActivitiesByUserId(Integer userId) {
+        return activityRepository.findAllByUserId(userId).stream()
+                .map(ActivityResponse::from)
+                .toList();
+    }
+
     public ActivityResponse createMyActivity(UserPrincipal principal, ActivityRequest request) {
         User user = userRepository.getReferenceById(principal.id());
         Activity activity = Activity.create(

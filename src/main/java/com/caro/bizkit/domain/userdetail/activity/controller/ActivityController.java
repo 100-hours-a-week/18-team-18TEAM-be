@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -41,6 +42,18 @@ public class ActivityController {
     ) {
         List<ActivityResponse> activities = activityService.getMyActivities(user);
         return ResponseEntity.ok(ApiResponse.success("내 활동 조회 성공", activities));
+    }
+
+    @GetMapping
+    @Operation(summary = "사용자 활동 조회", description = "지정된 사용자 활동 목록을 조회합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
+    })
+    public ResponseEntity<ApiResponse<List<ActivityResponse>>> getActivitiesByUserId(
+            @RequestParam("userId") Integer userId
+    ) {
+        List<ActivityResponse> activities = activityService.getActivitiesByUserId(userId);
+        return ResponseEntity.ok(ApiResponse.success("사용자 활동 조회 성공", activities));
     }
 
     @PostMapping("/me")
