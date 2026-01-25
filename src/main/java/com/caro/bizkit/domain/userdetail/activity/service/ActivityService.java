@@ -5,11 +5,15 @@ import com.caro.bizkit.domain.user.entity.User;
 import com.caro.bizkit.domain.user.repository.UserRepository;
 import com.caro.bizkit.domain.userdetail.activity.dto.ActivityRequest;
 import com.caro.bizkit.domain.userdetail.activity.dto.ActivityResponse;
+import com.caro.bizkit.domain.userdetail.activity.dto.ActivityUpdateRequest;
 import com.caro.bizkit.domain.userdetail.activity.entity.Activity;
 import com.caro.bizkit.domain.userdetail.activity.repository.ActivityRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
@@ -36,5 +40,31 @@ public class ActivityService {
         );
         Activity saved = activityRepository.save(activity);
         return ActivityResponse.from(saved);
+    }
+
+    @PreAuthorize("@activitySecurity.isOwner(#activityId, authentication)")
+    public ActivityResponse updateMyActivity(
+            UserPrincipal principal,
+            Integer activityId,
+            ActivityUpdateRequest request
+    ) {
+        Activity activity = activityRepository.findById(activityId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Activity not found"));
+        if (request.name() != null) {
+            activity.updateName(request.name());
+        }
+        if (request.grade() != null) {
+            activity.updateGrade(request.grade());
+        }
+        if (request.organization() != null) {
+            activity.updateOrganization(request.organization());
+        }
+        if (request.content() != null) {
+            activity.updateContent(request.content());
+        }
+        if (request.win_date() != null) {
+            activity.updateWinDate(request.win_date());
+        }
+        return ActivityResponse.from(activity);
     }
 }

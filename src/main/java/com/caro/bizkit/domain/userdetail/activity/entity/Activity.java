@@ -58,6 +58,26 @@ public class Activity extends BaseTimeEntity {
         return activity;
     }
 
+    public void updateName(String name) {
+        this.name = name;
+    }
+
+    public void updateGrade(String grade) {
+        this.grade = grade;
+    }
+
+    public void updateOrganization(String organization) {
+        this.organization = organization;
+    }
+
+    public void updateContent(String content) {
+        this.content = content;
+    }
+
+    public void updateWinDate(LocalDate winDate) {
+        this.winDate = winDate;
+    }
+
     public void setUser(User user) {
         this.user = user;
     }
