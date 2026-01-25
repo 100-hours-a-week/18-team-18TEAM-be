@@ -2,16 +2,20 @@ package com.caro.bizkit.domain.userdetail.project.controller;
 
 import com.caro.bizkit.common.ApiResponse.ApiResponse;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
+import com.caro.bizkit.domain.userdetail.project.dto.ProjectRequest;
 import com.caro.bizkit.domain.userdetail.project.dto.ProjectResponse;
 import com.caro.bizkit.domain.userdetail.project.service.ProjectService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -33,5 +37,18 @@ public class ProjectController {
     ) {
         List<ProjectResponse> projects = projectService.getMyProjects(user);
         return ResponseEntity.ok(ApiResponse.success("내 프로젝트 조회 성공", projects));
+    }
+
+    @PostMapping("/me")
+    @Operation(summary = "내 프로젝트 생성", description = "인증된 사용자의 프로젝트를 생성합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
+    })
+    public ResponseEntity<ApiResponse<ProjectResponse>> createMyProject(
+            @AuthenticationPrincipal UserPrincipal user,
+            @Valid @RequestBody ProjectRequest request
+    ) {
+        ProjectResponse project = projectService.createMyProject(user, request);
+        return ResponseEntity.ok(ApiResponse.success("내 프로젝트 생성 성공", project));
     }
 }
