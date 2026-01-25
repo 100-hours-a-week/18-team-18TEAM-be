@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -41,6 +42,18 @@ public class ProjectController {
     ) {
         List<ProjectResponse> projects = projectService.getMyProjects(user);
         return ResponseEntity.ok(ApiResponse.success("내 프로젝트 조회 성공", projects));
+    }
+
+    @GetMapping
+    @Operation(summary = "사용자 프로젝트 조회", description = "지정된 사용자 프로젝트 목록을 조회합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
+    })
+    public ResponseEntity<ApiResponse<List<ProjectResponse>>> getProjectsByUserId(
+            @RequestParam("userId") Integer userId
+    ) {
+        List<ProjectResponse> projects = projectService.getProjectsByUserId(userId);
+        return ResponseEntity.ok(ApiResponse.success("사용자 프로젝트 조회 성공", projects));
     }
 
     @PostMapping("/me")

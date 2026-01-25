@@ -28,6 +28,12 @@ public class ProjectService {
                 .toList();
     }
 
+    public List<ProjectResponse> getProjectsByUserId(Integer userId) {
+        return projectRepository.findAllByUserId(userId).stream()
+                .map(ProjectResponse::from)
+                .toList();
+    }
+
     public ProjectResponse createMyProject(UserPrincipal principal, ProjectRequest request) {
         User user = userRepository.getReferenceById(principal.id());
         Project project = Project.create(
