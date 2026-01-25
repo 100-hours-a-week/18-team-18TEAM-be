@@ -3,7 +3,6 @@ package com.caro.bizkit.domain.user.service;
 import com.caro.bizkit.common.S3.service.S3Service;
 import com.caro.bizkit.domain.auth.entity.Account;
 import com.caro.bizkit.domain.auth.entity.OAuth;
-import com.caro.bizkit.domain.auth.repository.AccountRepository;
 import com.caro.bizkit.domain.auth.repository.OAuthRepository;
 import com.caro.bizkit.domain.auth.service.KakaoOAuthClient;
 import com.caro.bizkit.domain.auth.service.KakaoOAuthProperties;
@@ -57,9 +56,6 @@ public class UserService {
 
     @Transactional
     public UserResponse updateMyStatus(UserPrincipal principal, UserRequest request) {
-        if (principal == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized user");
-        }
         User user = userRepository.findById(principal.id())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User not found"));
         if (request != null) {

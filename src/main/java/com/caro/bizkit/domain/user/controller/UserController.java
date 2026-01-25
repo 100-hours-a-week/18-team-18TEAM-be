@@ -15,7 +15,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/users")
@@ -57,6 +56,14 @@ public class UserController {
     }
 
     @PutMapping("/me")
+    @Operation(summary = "내 정보 수정", description = "내 사용자 정보를 수정합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "수정 성공",
+                    content = @Content(schema = @Schema(implementation = UserResponse.class))
+            )
+    })
     public ResponseEntity<?> updateMyStatus(
             @AuthenticationPrincipal UserPrincipal user,
             @RequestBody UserRequest request
