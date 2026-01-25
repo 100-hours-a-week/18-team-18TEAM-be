@@ -99,4 +99,11 @@ public class CardService {
         }
         return CardResponse.from(card);
     }
+
+    @PreAuthorize("@cardSecurity.isOwner(#cardId, authentication)")
+    public void deleteMyCard(UserPrincipal principal, Integer cardId) {
+        Card card = cardRepository.findById(cardId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Card not found"));
+        cardRepository.delete(card);
+    }
 }

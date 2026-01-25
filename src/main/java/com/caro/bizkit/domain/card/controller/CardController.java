@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -67,5 +68,18 @@ public class CardController {
     ) {
         CardResponse card = cardService.updateMyCard(user, cardId, request);
         return ResponseEntity.ok(ApiResponse.success("내 명함 수정 성공", card));
+    }
+
+    @DeleteMapping("/{card_id}")
+    @Operation(summary = "내 명함 삭제", description = "명함 정보를 삭제합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
+    })
+    public ResponseEntity<ApiResponse<Void>> deleteMyCard(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable("card_id") Integer cardId
+    ) {
+        cardService.deleteMyCard(user, cardId);
+        return ResponseEntity.ok(ApiResponse.success("내 명함 삭제 성공", null));
     }
 }
