@@ -4,6 +4,7 @@ import com.caro.bizkit.common.ApiResponse.ApiResponse;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.userdetail.project.dto.ProjectRequest;
 import com.caro.bizkit.domain.userdetail.project.dto.ProjectResponse;
+import com.caro.bizkit.domain.userdetail.project.dto.ProjectUpdateRequest;
 import com.caro.bizkit.domain.userdetail.project.service.ProjectService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -13,9 +14,12 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -50,5 +54,32 @@ public class ProjectController {
     ) {
         ProjectResponse project = projectService.createMyProject(user, request);
         return ResponseEntity.ok(ApiResponse.success("내 프로젝트 생성 성공", project));
+    }
+
+    @PutMapping("/{project_id}")
+    @Operation(summary = "프로젝트 수정", description = "프로젝트 정보를 수정합니다. null 값은 반영하지 않습니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
+    })
+    public ResponseEntity<ApiResponse<ProjectResponse>> updateProject(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable("project_id") Integer projectId,
+            @RequestBody ProjectUpdateRequest request
+    ) {
+        ProjectResponse project = projectService.updateMyProject(user, projectId, request);
+        return ResponseEntity.ok(ApiResponse.success("프로젝트 수정 성공", project));
+    }
+
+    @DeleteMapping("/{project_id}")
+    @Operation(summary = "프로젝트 삭제", description = "프로젝트 정보를 삭제합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
+    })
+    public ResponseEntity<ApiResponse<Void>> deleteProject(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable("project_id") Integer projectId
+    ) {
+        projectService.deleteMyProject(user, projectId);
+        return ResponseEntity.ok(ApiResponse.success("프로젝트 삭제 성공", null));
     }
 }

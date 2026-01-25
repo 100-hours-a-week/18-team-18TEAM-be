@@ -53,6 +53,26 @@ public class Project extends BaseTimeEntity {
         return project;
     }
 
+    public void updateName(String name) {
+        this.name = name;
+    }
+
+    public void updateContent(String content) {
+        this.content = content;
+    }
+
+    public void updateStartDate(LocalDate startDate) {
+        this.startDate = startDate;
+    }
+
+    public void updateEndDate(LocalDate endDate) {
+        this.endDate = endDate;
+    }
+
+    public void updateIsProgress(Boolean isProgress) {
+        this.isProgress = isProgress;
+    }
+
     public void setUser(User user) {
         this.user = user;
     }
