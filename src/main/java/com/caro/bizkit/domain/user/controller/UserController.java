@@ -4,7 +4,7 @@ import com.caro.bizkit.common.ApiResponse.ApiResponse;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.user.dto.UserRequest;
 import com.caro.bizkit.domain.user.dto.UserResponse;
-import com.caro.bizkit.domain.withdrawl.dto.WithdrawalRequest;
+
 import com.caro.bizkit.domain.user.service.UserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -15,7 +15,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/api/users")
@@ -40,6 +39,14 @@ public class UserController {
     }
 
     @GetMapping("/{user_id}")
+    @Operation(summary = "상대 정보 조회", description = "상대 사용자의 기본 정보를 조회합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "조회 성공",
+                    content = @Content(schema = @Schema(implementation = UserResponse.class))
+            )
+    })
     public ResponseEntity<ApiResponse<UserResponse>> getUserProfile(@PathVariable("user_id") Integer userId) {
         UserResponse userResponse = userService.getUserProfile(userId);
         if (userResponse == null) {
@@ -49,6 +56,14 @@ public class UserController {
     }
 
     @PutMapping("/me")
+    @Operation(summary = "내 정보 수정", description = "내 사용자 정보를 수정합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "수정 성공",
+                    content = @Content(schema = @Schema(implementation = UserResponse.class))
+            )
+    })
     public ResponseEntity<?> updateMyStatus(
             @AuthenticationPrincipal UserPrincipal user,
             @RequestBody UserRequest request
@@ -57,18 +72,19 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("내 정보 수정 성공", userResponse));
     }
 
-    @PostMapping("/me/withdrawal")
+    @DeleteMapping("/me")
     @Operation(summary = "회원 탈퇴", description = "카카오 연결 해제 후 계정을 탈퇴 처리합니다.")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "200"
+                    responseCode = "200",
+                    description = "회원 탈퇴 성공"
             )
     })
     public ResponseEntity<ApiResponse<Void>> withdraw(
             @AuthenticationPrincipal UserPrincipal user,
-            @Valid @RequestBody WithdrawalRequest request
+            @RequestParam Integer reasonId
     ) {
-        userService.withdraw(user, request.reason_id());
+        userService.withdraw(user, reasonId);
         return ResponseEntity.ok(ApiResponse.success("회원 탈퇴 성공", null));
     }
 

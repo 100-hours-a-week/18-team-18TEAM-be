@@ -1,11 +1,11 @@
 package com.caro.bizkit.domain.user.repository;
 
-import com.caro.bizkit.common.baserepository.BaseRepository;
 import com.caro.bizkit.domain.user.entity.User;
 import com.caro.bizkit.domain.auth.entity.Account;
 
 import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface UserRepository extends BaseRepository<User, Integer> {
+public interface UserRepository extends JpaRepository<User, Integer> {
     Optional<User> findByAccount(Account account);
 }

@@ -32,7 +32,9 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login/{provider}")
-    @Operation(summary = "로그인", description = "소셜 로그인 코드를 받아 액세스 토큰을 발급합니다.")
+    @Operation(summary = "로그인", description = "pathvariable로 소셜 서비스 회사명(kakao)를 받고 body로 " +
+            "소셜 로그인 코드를 받아 액세스 토큰을 발급합니다.")
+
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",

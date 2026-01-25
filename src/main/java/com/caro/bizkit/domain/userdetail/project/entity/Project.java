@@ -36,6 +36,43 @@ public class Project extends BaseTimeEntity {
     @Column(nullable = false)
     private Boolean isProgress; // TINYINT(1) -> Boolean 매핑
 
+    public static Project create(
+            User user,
+            String name,
+            String content,
+            LocalDate startDate,
+            LocalDate endDate
+    ) {
+        Project project = new Project();
+        project.user = user;
+        project.name = name;
+        project.content = content;
+        project.startDate = startDate;
+        project.endDate = endDate;
+        project.isProgress = (endDate == null);
+        return project;
+    }
+
+    public void updateName(String name) {
+        this.name = name;
+    }
+
+    public void updateContent(String content) {
+        this.content = content;
+    }
+
+    public void updateStartDate(LocalDate startDate) {
+        this.startDate = startDate;
+    }
+
+    public void updateEndDate(LocalDate endDate) {
+        this.endDate = endDate;
+    }
+
+    public void updateIsProgress(Boolean isProgress) {
+        this.isProgress = isProgress;
+    }
+
     public void setUser(User user) {
         this.user = user;
     }
