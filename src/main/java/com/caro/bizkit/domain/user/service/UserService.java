@@ -58,8 +58,14 @@ public class UserService {
     public UserResponse updateMyStatus(UserPrincipal principal, UserRequest request) {
         User user = userRepository.findById(principal.id())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User not found"));
+        String previousKey = user.getProfileImageKey();
         if (request != null) {
             applyUpdates(user, request);
+            if (previousKey != null
+                    && request.profile_image_key() != null
+                    && !previousKey.equals(request.profile_image_key())) {
+                s3Service.deleteObject(previousKey);
+            }
         }
         return toResponse(user);
     }
