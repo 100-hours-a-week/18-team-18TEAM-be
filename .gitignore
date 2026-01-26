@@ -41,4 +41,4 @@ out/
 .env.*
 
 ## seed config
-src/main/java/com/caro/bizkit/domain/withdrawl/config/WithdrawalSeedConfig.java
+src/main/java/com/caro/bizkit/common/config/SeedDataConfig.java

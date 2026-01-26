@@ -66,6 +66,13 @@ public class WalletService {
         return new CollectedCardsResult(cards, nextCursorId, hasNext);
     }
 
+    @Transactional
+    public void deleteCollectedCard(UserPrincipal principal, Integer cardId) {
+        UserCard userCard = userCardRepository.findByUserIdAndCardId(principal.id(), cardId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Collected card not found"));
+        userCardRepository.delete(userCard);
+    }
+
     private List<UserCard> findUserCards(Integer userId, Integer cursorId, String keyword, int limit) {
         if (StringUtils.hasText(keyword)) {
             return userCardRepository.searchCollectedCards(
