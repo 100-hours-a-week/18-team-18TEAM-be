@@ -6,13 +6,20 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "user_card")
+@EntityListeners(AuditingEntityListener.class)
+@Table(
+        name = "user_card",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_user_card_user_id_card_id", columnNames = {"user_id", "card_id"})
+        }
+)
 public class UserCard {
 
     @Id
@@ -28,9 +35,21 @@ public class UserCard {
     private Card card;
 
     @CreatedDate
+    @Column(updatable = false, nullable = false)
     private LocalDateTime createdAt;
+
+    public static UserCard create(User user, Card card) {
+        UserCard userCard = new UserCard();
+        userCard.user = user;
+        userCard.card = card;
+        return userCard;
+    }
 
     public void setUser(User user) {
         this.user = user;
+    }
+
+    public void setCard(Card card) {
+        this.card = card;
     }
 }
