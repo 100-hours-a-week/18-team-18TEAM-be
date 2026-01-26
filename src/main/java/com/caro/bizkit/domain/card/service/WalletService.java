@@ -17,6 +17,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -48,10 +49,11 @@ public class WalletService {
     public CollectedCardsResult getCollectedCards(
             UserPrincipal principal,
             Integer size,
-            Integer cursorId
+            Integer cursorId,
+            String keyword
     ) {
         int limit = normalizeSize(size);
-        List<UserCard> userCards = findUserCards(principal.id(), cursorId, limit + 1);
+        List<UserCard> userCards = findUserCards(principal.id(), cursorId, keyword, limit + 1);
         boolean hasNext = userCards.size() > limit;
         if (hasNext) {
             userCards = userCards.subList(0, limit);
@@ -64,7 +66,15 @@ public class WalletService {
         return new CollectedCardsResult(cards, nextCursorId, hasNext);
     }
 
-    private List<UserCard> findUserCards(Integer userId, Integer cursorId, int limit) {
+    private List<UserCard> findUserCards(Integer userId, Integer cursorId, String keyword, int limit) {
+        if (StringUtils.hasText(keyword)) {
+            return userCardRepository.searchCollectedCards(
+                    userId,
+                    cursorId,
+                    keyword,
+                    PageRequest.of(0, limit)
+            );
+        }
         if (cursorId == null) {
             return userCardRepository.findByUserIdOrderByCreatedAtDescIdDesc(userId, PageRequest.of(0, limit));
         }

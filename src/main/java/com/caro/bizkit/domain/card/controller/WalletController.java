@@ -51,9 +51,10 @@ public class WalletController {
     public ResponseEntity<ApiResponse<List<CardResponse>>> getCollectedCards(
             @AuthenticationPrincipal UserPrincipal user,
             @RequestParam(defaultValue = "20") Integer size,
-            @RequestParam(required = false) Integer cursorId
+            @RequestParam(required = false) Integer cursorId,
+            @RequestParam(required = false) String keyword
     ) {
-        CollectedCardsResult result = walletService.getCollectedCards(user, size, cursorId);
+        CollectedCardsResult result = walletService.getCollectedCards(user, size, cursorId, keyword);
         Pagination pagination = new Pagination(result.cursorId(), result.hasNext());
         return ResponseEntity.ok(ApiResponse.successWithPagination("수집 명함 조회 성공", result.data(), pagination));
     }
