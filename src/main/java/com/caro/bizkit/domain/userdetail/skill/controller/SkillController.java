@@ -27,23 +27,17 @@ public class SkillController {
     private final SkillService skillService;
 
     @GetMapping
-    @Operation(summary = "스킬 목록 조회", description = "전체 스킬 목록을 조회합니다.")
+    @Operation(summary = "스킬 목록 조회", description = "userId가 없으면 전체 스킬, 있으면 사용자 스킬을 조회합니다.")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
     })
-    public ResponseEntity<ApiResponse<List<SkillResponse>>> getSkills() {
-        List<SkillResponse> skills = skillService.getAllSkills();
-        return ResponseEntity.ok(ApiResponse.success("스킬 목록 조회 성공", skills));
-    }
-
-    @GetMapping(params = "userId")
-    @Operation(summary = "사용자 스킬 조회", description = "지정된 사용자의 스킬 목록을 조회합니다.")
-    @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
-    })
-    public ResponseEntity<ApiResponse<List<SkillResponse>>> getSkillsByUserId(
-            @RequestParam("userId") Integer userId
+    public ResponseEntity<ApiResponse<List<SkillResponse>>> getSkills(
+            @RequestParam(value = "userId", required = false) Integer userId
     ) {
+        if (userId == null) {
+            List<SkillResponse> skills = skillService.getAllSkills();
+            return ResponseEntity.ok(ApiResponse.success("스킬 목록 조회 성공", skills));
+        }
         List<SkillResponse> skills = skillService.getSkillsByUserId(userId);
         return ResponseEntity.ok(ApiResponse.success("사용자 스킬 조회 성공", skills));
     }
