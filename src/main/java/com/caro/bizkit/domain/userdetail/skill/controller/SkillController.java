@@ -11,7 +11,9 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -43,5 +45,18 @@ public class SkillController {
     ) {
         List<SkillResponse> skills = skillService.getMySkills(user);
         return ResponseEntity.ok(ApiResponse.success("내 스킬 조회 성공", skills));
+    }
+
+    @DeleteMapping("/me/{skill_id}")
+    @Operation(summary = "내 스킬 삭제", description = "인증된 사용자의 스킬을 삭제합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
+    })
+    public ResponseEntity<ApiResponse<Void>> deleteMySkill(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable("skill_id") Integer skillId
+    ) {
+        skillService.deleteMySkill(user, skillId);
+        return ResponseEntity.ok(ApiResponse.success("내 스킬 삭제 성공", null));
     }
 }

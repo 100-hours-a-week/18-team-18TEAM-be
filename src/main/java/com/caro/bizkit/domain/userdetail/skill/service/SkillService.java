@@ -7,7 +7,9 @@ import com.caro.bizkit.domain.userdetail.skill.repository.UserSkillRepository;
 import java.util.List;
 import java.util.stream.StreamSupport;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
@@ -26,5 +28,11 @@ public class SkillService {
         return userSkillRepository.findAllByUserId(principal.id()).stream()
                 .map(userSkill -> SkillResponse.from(userSkill.getSkill()))
                 .toList();
+    }
+
+    public void deleteMySkill(UserPrincipal principal, Integer skillId) {
+        var userSkill = userSkillRepository.findByUserIdAndSkillId(principal.id(), skillId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User skill not found"));
+        userSkillRepository.delete(userSkill);
     }
 }
