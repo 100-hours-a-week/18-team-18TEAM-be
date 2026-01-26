@@ -30,6 +30,12 @@ public class SkillService {
                 .toList();
     }
 
+    public List<SkillResponse> getSkillsByUserId(Integer userId) {
+        return userSkillRepository.findAllByUserId(userId).stream()
+                .map(userSkill -> SkillResponse.from(userSkill.getSkill()))
+                .toList();
+    }
+
     public void deleteMySkill(UserPrincipal principal, Integer skillId) {
         var userSkill = userSkillRepository.findByUserIdAndSkillId(principal.id(), skillId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User skill not found"));
