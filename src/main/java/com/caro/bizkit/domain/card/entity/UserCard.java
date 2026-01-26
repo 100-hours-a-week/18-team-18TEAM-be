@@ -12,7 +12,12 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "user_card")
+@Table(
+        name = "user_card",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_user_card_user_id_card_id", columnNames = {"user_id", "card_id"})
+        }
+)
 public class UserCard {
 
     @Id
@@ -30,7 +35,18 @@ public class UserCard {
     @CreatedDate
     private LocalDateTime createdAt;
 
+    public static UserCard create(User user, Card card) {
+        UserCard userCard = new UserCard();
+        userCard.user = user;
+        userCard.card = card;
+        return userCard;
+    }
+
     public void setUser(User user) {
         this.user = user;
+    }
+
+    public void setCard(Card card) {
+        this.card = card;
     }
 }
