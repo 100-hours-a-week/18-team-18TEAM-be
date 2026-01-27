@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.DeleteMapping;
 
 @RestController
 @RequestMapping("/api/links")
@@ -67,5 +68,18 @@ public class LinkController {
     ) {
         LinkResponse link = linkService.updateMyLink(user, linkId, request);
         return ResponseEntity.ok(ApiResponse.success("내 링크 수정 성공", link));
+    }
+
+    @DeleteMapping("/{link_id}")
+    @Operation(summary = "내 링크 삭제", description = "링크 정보를 삭제합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
+    })
+    public ResponseEntity<ApiResponse<Void>> deleteMyLink(
+            @AuthenticationPrincipal UserPrincipal user,
+            @PathVariable("link_id") Integer linkId
+    ) {
+        linkService.deleteMyLink(user, linkId);
+        return ResponseEntity.noContent().build();
     }
 }

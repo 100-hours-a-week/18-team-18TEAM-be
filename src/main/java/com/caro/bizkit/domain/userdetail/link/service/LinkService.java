@@ -51,4 +51,11 @@ public class LinkService {
         }
         return LinkResponse.from(linkEntity);
     }
+
+    @PreAuthorize("@linkSecurity.isOwner(#linkId, authentication)")
+    public void deleteMyLink(UserPrincipal principal, Integer linkId) {
+        Link linkEntity = linkRepository.findById(linkId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Link not found"));
+        linkRepository.delete(linkEntity);
+    }
 }
