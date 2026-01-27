@@ -38,6 +38,14 @@ public class Link extends BaseTimeEntity { // BaseEntity 활용 (created_at, upd
         return linkEntity;
     }
 
+    public void updateTitle(String title) {
+        this.title = title;
+    }
+
+    public void updateLink(String link) {
+        this.link = link;
+    }
+
     public void setUser(User user) {
         this.user = user;
     }
