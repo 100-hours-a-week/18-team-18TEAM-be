@@ -28,6 +28,12 @@ public class LinkService {
                 .toList();
     }
 
+    public List<LinkResponse> getLinksByUserId(Integer userId) {
+        return linkRepository.findAllByUserId(userId).stream()
+                .map(LinkResponse::from)
+                .toList();
+    }
+
     public LinkResponse createMyLink(UserPrincipal principal, LinkRequest request) {
         User user = userRepository.getReferenceById(principal.id());
         Link linkEntity = Link.create(user, request.title(), request.link());

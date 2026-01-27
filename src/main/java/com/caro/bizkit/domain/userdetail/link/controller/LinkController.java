@@ -22,6 +22,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @RestController
 @RequestMapping("/api/links")
@@ -41,6 +42,18 @@ public class LinkController {
     ) {
         List<LinkResponse> links = linkService.getMyLinks(user);
         return ResponseEntity.ok(ApiResponse.success("내 링크 조회 성공", links));
+    }
+
+    @GetMapping
+    @Operation(summary = "사용자 링크 조회", description = "지정된 사용자 링크 목록을 조회합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
+    })
+    public ResponseEntity<ApiResponse<List<LinkResponse>>> getLinksByUserId(
+            @RequestParam("userId") Integer userId
+    ) {
+        List<LinkResponse> links = linkService.getLinksByUserId(userId);
+        return ResponseEntity.ok(ApiResponse.success("사용자 링크 조회 성공", links));
     }
 
     @PostMapping("/me")
