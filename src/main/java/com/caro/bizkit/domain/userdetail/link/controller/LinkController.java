@@ -2,16 +2,20 @@ package com.caro.bizkit.domain.userdetail.link.controller;
 
 import com.caro.bizkit.common.ApiResponse.ApiResponse;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
+import com.caro.bizkit.domain.userdetail.link.dto.LinkRequest;
 import com.caro.bizkit.domain.userdetail.link.dto.LinkResponse;
 import com.caro.bizkit.domain.userdetail.link.service.LinkService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -33,5 +37,18 @@ public class LinkController {
     ) {
         List<LinkResponse> links = linkService.getMyLinks(user);
         return ResponseEntity.ok(ApiResponse.success("내 링크 조회 성공", links));
+    }
+
+    @PostMapping("/me")
+    @Operation(summary = "내 링크 생성", description = "인증된 사용자의 링크를 생성합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
+    })
+    public ResponseEntity<ApiResponse<LinkResponse>> createMyLink(
+            @AuthenticationPrincipal UserPrincipal user,
+            @Valid @RequestBody LinkRequest request
+    ) {
+        LinkResponse link = linkService.createMyLink(user, request);
+        return ResponseEntity.ok(ApiResponse.success("내 링크 생성 성공", link));
     }
 }
