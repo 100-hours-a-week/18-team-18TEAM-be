@@ -50,7 +50,6 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(provider, request.code()));
     }
 
-    @Profile("dev")
     @GetMapping("/kakao/callback")
     @Operation(summary = "카카오 콜백", description = "카카오 OAuth 콜백 테스트용 엔드포인트입니다.")
     @ApiResponses({
