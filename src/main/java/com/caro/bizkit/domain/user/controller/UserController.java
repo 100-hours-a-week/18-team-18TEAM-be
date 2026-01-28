@@ -47,7 +47,7 @@ public class UserController {
         return ResponseEntity.ok(ApiResponse.success("사용자 정보 조회 성공", userResponse));
     }
 
-    @PutMapping("/me")
+    @PatchMapping("/me")
     @Operation(summary = "내 정보 수정", description = "내 사용자 정보를 수정합니다.")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
