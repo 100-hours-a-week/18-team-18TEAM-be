@@ -11,6 +11,10 @@ spring:
     hibernate:
       ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:}
     open-in-view: false
+  data:
+    redis:
+      host: ${REDIS_HOST:}
+      password: ${REDIS_PASSWORD:}
 
 management:
   endpoints:
