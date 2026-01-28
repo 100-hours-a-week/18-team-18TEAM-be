@@ -5,7 +5,9 @@ import com.caro.bizkit.domain.user.entity.User;
 import com.caro.bizkit.domain.user.repository.UserRepository;
 import com.caro.bizkit.domain.userdetail.activity.dto.ActivityRequest;
 import com.caro.bizkit.domain.userdetail.activity.dto.ActivityResponse;
-import com.caro.bizkit.domain.userdetail.activity.dto.ActivityUpdateRequest;
+import java.time.LocalDate;
+import java.util.Map;
+import java.util.function.Consumer;
 import com.caro.bizkit.domain.userdetail.activity.entity.Activity;
 import com.caro.bizkit.domain.userdetail.activity.repository.ActivityRepository;
 import java.util.List;
@@ -13,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 @Service
@@ -48,30 +51,47 @@ public class ActivityService {
         return ActivityResponse.from(saved);
     }
 
+    @Transactional
     @PreAuthorize("@activitySecurity.isOwner(#activityId, authentication)")
     public ActivityResponse updateMyActivity(
             UserPrincipal principal,
             Integer activityId,
-            ActivityUpdateRequest request
+            Map<String, Object> request
     ) {
         Activity activity = activityRepository.findById(activityId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Activity not found"));
-        if (request.name() != null) {
-            activity.updateName(request.name());
+
+        if (request == null) {
+            return ActivityResponse.from(activity);
         }
-        if (request.grade() != null) {
-            activity.updateGrade(request.grade());
-        }
-        if (request.organization() != null) {
-            activity.updateOrganization(request.organization());
-        }
-        if (request.content() != null) {
-            activity.updateContent(request.content());
-        }
-        if (request.win_date() != null) {
-            activity.updateWinDate(request.win_date());
-        }
+
+        applyUpdates(activity, request);
         return ActivityResponse.from(activity);
+    }
+
+    private void applyUpdates(Activity activity, Map<String, Object> request) {
+        applyIfPresent(request, "name", activity::updateName);
+        applyIfPresent(request, "grade", activity::updateGrade);
+        applyIfPresent(request, "organization", activity::updateOrganization);
+        applyIfPresent(request, "content", activity::updateContent);
+        applyDateIfPresent(request, "win_date", activity::updateWinDate);
+    }
+
+    private void applyIfPresent(Map<String, Object> request, String key, Consumer<String> updater) {
+        if (request.containsKey(key)) {
+            updater.accept((String) request.get(key));
+        }
+    }
+
+    private void applyDateIfPresent(Map<String, Object> request, String key, Consumer<LocalDate> updater) {
+        if (request.containsKey(key)) {
+            Object value = request.get(key);
+            if (value instanceof LocalDate) {
+                updater.accept((LocalDate) value);
+            } else if (value instanceof String) {
+                updater.accept(LocalDate.parse((String) value));
+            }
+        }
     }
 
     @PreAuthorize("@activitySecurity.isOwner(#activityId, authentication)")
