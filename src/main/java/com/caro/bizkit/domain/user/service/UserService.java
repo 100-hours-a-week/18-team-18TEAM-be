@@ -7,8 +7,9 @@ import com.caro.bizkit.domain.auth.repository.OAuthRepository;
 import com.caro.bizkit.domain.auth.service.KakaoOAuthClient;
 import com.caro.bizkit.domain.auth.service.KakaoOAuthProperties;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
-import com.caro.bizkit.domain.user.dto.UserRequest;
 import com.caro.bizkit.domain.user.dto.UserResponse;
+import java.util.Map;
+import java.util.function.Consumer;
 import com.caro.bizkit.domain.user.entity.User;
 import com.caro.bizkit.domain.user.repository.UserRepository;
 import com.caro.bizkit.domain.withdrawl.entity.AccountWithdrawal;
@@ -55,44 +56,40 @@ public class UserService {
     }
 
     @Transactional
-    public UserResponse updateMyStatus(UserPrincipal principal, UserRequest request) {
+    public UserResponse updateMyStatus(UserPrincipal principal, Map<String, Object> request) {
         User user = userRepository.findById(principal.id())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User not found"));
-        String previousKey = user.getProfileImageKey();
-        if (request != null) {
-            applyUpdates(user, request);
-            if (previousKey != null
-                    && request.profile_image_key() != null
-                    && !previousKey.equals(request.profile_image_key())) {
-                s3Service.deleteObject(previousKey);
-            }
+
+        if (request == null) {
+            return toResponse(user);
         }
+
+        String previousKey = user.getProfileImageKey();
+        applyUpdates(user, request);
+
+        if (previousKey != null
+                && request.containsKey("profile_image_key")
+                && !previousKey.equals(request.get("profile_image_key"))) {
+            s3Service.deleteObject(previousKey);
+        }
+
         return toResponse(user);
     }
 
-    private void applyUpdates(User user, UserRequest request) {
-        if (request.name() != null) {
-            user.updateName(request.name());
-        }
-        if (request.phone_number() != null) {
-            user.updatePhoneNumber(request.phone_number());
-        }
-        if (request.lined_number() != null) {
-            user.updateLinedNumber(request.lined_number());
-        }
-        if (request.company() != null) {
-            user.updateCompany(request.company());
-        }
-        if (request.department() != null) {
-            user.updateDepartment(request.department());
-        }
-        if (request.position() != null) {
-            user.updatePosition(request.position());
-        }
-        if (request.profile_image_key() != null) {
-            user.updateProfileImageKey(request.profile_image_key());
-        }
+    private void applyUpdates(User user, Map<String, Object> request) {
+        applyIfPresent(request, "name", user::updateName);
+        applyIfPresent(request, "phone_number", user::updatePhoneNumber);
+        applyIfPresent(request, "lined_number", user::updateLinedNumber);
+        applyIfPresent(request, "company", user::updateCompany);
+        applyIfPresent(request, "department", user::updateDepartment);
+        applyIfPresent(request, "position", user::updatePosition);
+        applyIfPresent(request, "profile_image_key", user::updateProfileImageKey);
+    }
 
+    private void applyIfPresent(Map<String, Object> request, String key, Consumer<String> updater) {
+        if (request.containsKey(key)) {
+            updater.accept((String) request.get(key));
+        }
     }
 
     @Transactional

@@ -2,10 +2,10 @@ package com.caro.bizkit.domain.user.controller;
 
 import com.caro.bizkit.common.ApiResponse.ApiResponse;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
-import com.caro.bizkit.domain.user.dto.UserRequest;
 import com.caro.bizkit.domain.user.dto.UserResponse;
 
 import com.caro.bizkit.domain.user.service.UserService;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -54,12 +54,11 @@ public class UserController {
     })
     public ResponseEntity<?> updateMyStatus(
             @AuthenticationPrincipal UserPrincipal user,
-            @RequestBody UserRequest request
+            @RequestBody Map<String, Object> request
     ) {
         UserResponse userResponse = userService.updateMyStatus(user, request);
         return ResponseEntity.ok(ApiResponse.success("내 정보 수정 성공", userResponse));
     }
-
     @DeleteMapping("/me")
     @Operation(summary = "회원 탈퇴", description = "카카오 연결 해제 후 계정을 탈퇴 처리합니다.")
     @ApiResponses({
