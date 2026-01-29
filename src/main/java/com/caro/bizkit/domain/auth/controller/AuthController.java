@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +33,9 @@ public class AuthController {
     private final AuthService authService;
 
     @PostMapping("/login/{provider}")
-    @Operation(summary = "로그인", description = "소셜 로그인 코드를 받아 액세스 토큰을 발급합니다.")
+    @Operation(summary = "로그인", description = "pathvariable로 소셜 서비스 회사명(kakao)를 받고 body로 " +
+            "소셜 로그인 코드를 받아 액세스 토큰을 발급합니다.")
+
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
@@ -43,12 +46,16 @@ public class AuthController {
     public ResponseEntity<AccessTokenResponse> login(
             @Parameter(description = "소셜 로그인 제공자", example = "kakao")
             @PathVariable String provider,
-            @Valid @RequestBody LoginRequest request
+            @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpRequest
     ) {
-        return ResponseEntity.ok(authService.login(provider, request.code()));
+        String host = httpRequest.getHeader("Origin");
+        if (host == null) {
+            host = httpRequest.getHeader("Host");
+        }
+        return ResponseEntity.ok(authService.login(provider, request.code(), host));
     }
 
-    @Profile("dev")
     @GetMapping("/kakao/callback")
     @Operation(summary = "카카오 콜백", description = "카카오 OAuth 콜백 테스트용 엔드포인트입니다.")
     @ApiResponses({

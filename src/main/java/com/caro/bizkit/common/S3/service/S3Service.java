@@ -38,19 +38,19 @@ public class S3Service {
 
 
 
-    public String createObjectKey(UploadCategory type, String originalFilename) {
+    public String createObjectKey(UploadCategory type, String contentType) {
         if (type == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "S3 upload category is required");
         }
         String cleanedPrefix = type.prefix();
         String datePath = LocalDate.now().toString().replace("-", "/");
-        String extension = extractExtension(originalFilename);
+        String extension = extensionFromContentType(contentType);
         String uuid = UUID.randomUUID().toString().replace("-", "");
         if (StringUtils.hasText(extension)) {
             return cleanedPrefix + "/" + datePath + "/" + uuid + "." + extension;
         }
-        String key = cleanedPrefix + "/" + datePath + "/" + uuid + "." + extension;
-        log.warn(key);
+        String key = cleanedPrefix + "/" + datePath + "/" + uuid;
+        log.warn("Content type has no known extension: {}", contentType);
         return key;
     }
 
@@ -121,15 +121,23 @@ public class S3Service {
     }
 
 
-    //확장자 떼기
-    private String extractExtension(String originalFilename) {
-        if (!StringUtils.hasText(originalFilename)) {
+    // contentType에서 확장자 매핑
+    private String extensionFromContentType(String contentType) {
+        if (!StringUtils.hasText(contentType)) {
             return "";
         }
-        int lastDot = originalFilename.lastIndexOf('.');
-        if (lastDot < 0 || lastDot == originalFilename.length() - 1) {
-            return "";
-        }
-        return originalFilename.substring(lastDot + 1).toLowerCase();
+        String normalized = contentType.split(";", 2)[0].trim().toLowerCase();
+        return switch (normalized) {
+            case "image/jpeg" -> "jpg";
+            case "image/png" -> "png";
+            case "image/gif" -> "gif";
+            case "image/webp" -> "webp";
+            case "image/svg+xml" -> "svg";
+            case "image/heic" -> "heic";
+            case "image/heif" -> "heif";
+            case "application/pdf" -> "pdf";
+            case "text/plain" -> "txt";
+            default -> "";
+        };
     }
 }

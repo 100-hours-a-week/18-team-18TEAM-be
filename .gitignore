@@ -39,3 +39,6 @@ out/
 ## env file
 .env
 .env.*
+
+## seed config
+src/main/java/com/caro/bizkit/common/config/SeedDataConfig.java

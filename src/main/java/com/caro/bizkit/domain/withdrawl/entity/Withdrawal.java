@@ -16,4 +16,10 @@ public class Withdrawal {
 
     @Column(length = 150, nullable = false)
     private String content;
+
+    public static Withdrawal create(String content) {
+        Withdrawal withdrawal = new Withdrawal();
+        withdrawal.content = content;
+        return withdrawal;
+    }
 }

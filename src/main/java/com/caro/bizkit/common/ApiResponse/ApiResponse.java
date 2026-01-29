@@ -12,13 +12,15 @@ public class ApiResponse<T> {
     private HttpStatusCode code;
     private String message;
     private T data;
+    private Object pagination;
 
 
     @Builder
-    public ApiResponse(HttpStatusCode code, String message, T data){
+    public ApiResponse(HttpStatusCode code, String message, T data, Object pagination){
         this.code = code;
         this.message = message;
         this.data = data;
+        this.pagination = pagination;
     }
 
 
@@ -30,6 +32,13 @@ public class ApiResponse<T> {
                 .build();
     }
 
+    public static <T> ApiResponse<T> successWithPagination(String message, T data, Object pagination) {
+        return ApiResponse.<T>builder()
+                .message(message)
+                .data(data)
+                .pagination(pagination)
+                .build();
+    }
 
 
 
@@ -41,4 +50,3 @@ public class ApiResponse<T> {
     }
 
 }
-

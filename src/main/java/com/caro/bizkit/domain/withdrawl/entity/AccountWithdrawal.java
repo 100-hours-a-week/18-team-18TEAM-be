@@ -21,4 +21,13 @@ public class AccountWithdrawal {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "reason_id", nullable = false)
     private Withdrawal withdrawal;
+
+    public static AccountWithdrawal create(Account account, Withdrawal withdrawal) {
+        AccountWithdrawal accountWithdrawal = new AccountWithdrawal();
+        accountWithdrawal.account = account;
+        accountWithdrawal.withdrawal = withdrawal;
+        return accountWithdrawal;
+    }
+
+
 }

@@ -6,6 +6,8 @@ import com.caro.bizkit.domain.auth.entity.Account;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.SQLDelete;
+import java.time.LocalDateTime;
 
 
 
@@ -13,6 +15,7 @@ import lombok.*;
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "users") // SQL의 users 테이블과 매핑
+@SQLDelete(sql = "UPDATE users SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
 public class User extends BaseTimeEntity {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -60,6 +63,41 @@ public class User extends BaseTimeEntity {
         return user;
     }
 
+    public void updateName(String name) {
+        this.name = name;
+    }
+
+    public void updatePhoneNumber(String phoneNumber) {
+        this.phoneNumber = phoneNumber;
+    }
+
+    public void updateLinedNumber(String linedNumber) {
+        this.linedNumber = linedNumber;
+    }
+
+    public void updateCompany(String company) {
+        this.company = company;
+    }
+
+    public void updateDepartment(String department) {
+        this.department = department;
+    }
+
+    public void updatePosition(String position) {
+        this.position = position;
+    }
+
+    public void updateProfileImageKey(String profileImageKey) {
+        this.profileImageKey = profileImageKey;
+    }
+
+    public void updateDescription(String description) {
+        this.description = description;
+    }
+
+    public void markDeleted() {
+        this.deletedAt = LocalDateTime.now();
+    }
 
 
 
