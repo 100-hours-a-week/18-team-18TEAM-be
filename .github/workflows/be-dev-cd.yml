@@ -2,7 +2,7 @@ name: CD - DEV (BE)
 
 on:
   push:
-    branches: [ "develop" ]
+    branches: ["develop"]
 
 permissions:
   contents: write
@@ -29,70 +29,30 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set Up Node.js (for semantic-release)
-        uses: actions/setup-node@v4
+      - name: Set Up Java
+        uses: actions/setup-java@v4
         with:
-          node-version: 22
+          distribution: temurin
+          java-version: "21"
 
-      - name: Install semantic-release
-        run: |
-          set -euo pipefail
-          npm i -g semantic-release@23 \
-            @semantic-release/commit-analyzer@12 \
-            @semantic-release/release-notes-generator@13 \
-            @semantic-release/changelog@6 \
-            @semantic-release/git@10 \
-            @semantic-release/github@10 \
-            @semantic-release/exec@6 \
-            conventional-changelog-conventionalcommits@8
-
-      - name: Semantic Release (dev) - bump gradle.properties
+      - name: Semantic Release (dev)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          set -euo pipefail
-          semantic-release
+        run: npx semantic-release
 
       - name: Read version from gradle.properties
         id: ver
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="$(grep -E '^version=' gradle.properties | head -n1 | cut -d= -f2 | tr -d ' \r\n\t')"
-          [[ -n "$VERSION" ]] || (echo "version not found in gradle.properties" >&2; exit 1)
+          VERSION=$(grep -E '^version=' gradle.properties | cut -d'=' -f2 | tr -d '[:space:]')
           echo "value=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Set Up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: "temurin"
-          java-version: "21"
-          cache: "gradle"
-
-      - name: Gradle Test
-        run: |
-          set -euo pipefail
-          ./gradlew test --no-daemon
-
-      - name: Gradle Build (bootJar)
-        run: |
-          set -euo pipefail
-          ./gradlew clean bootJar --no-daemon
-
-      - name: Prepare BE Deploy Artifact (jar)
+      - name: Build (Gradle)
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="${{ steps.ver.outputs.value }}"
-
-          JAR_PATH="$(ls -1 build/libs/*.jar | head -n1)"
-          [[ -f "$JAR_PATH" ]] || (echo "jar not found under build/libs" >&2; exit 1)
-
-          OUT_JAR="bizkit-be-${VERSION}.jar"
-          cp "$JAR_PATH" "$OUT_JAR"
-
-          echo "OUT_JAR=$OUT_JAR" >> "$GITHUB_ENV"
-          ls -al "$OUT_JAR"
+          ./gradlew clean build -x test
 
       - name: Configure AWS Credentials (Access Key)
         uses: aws-actions/configure-aws-credentials@v4
@@ -101,17 +61,17 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Upload Build Artifact to S3
+      - name: Upload Release Artifact to S3 (BE)
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="${{ steps.ver.outputs.value }}"
+          VERSION=${{ steps.ver.outputs.value }}
           BUCKET="${{ secrets.S3_BUCKET }}"
-          S3_PREFIX="${{ secrets.S3_PREFIX }}"
 
-          RELEASE_KEY="${S3_PREFIX}/${APP_STAGE}/releases/be/${VERSION}/bizkit-be-${VERSION}.jar"
+          JAR=$(ls -1 build/libs/*.jar | head -n 1)
+          RELEASE_KEY="${{ secrets.S3_PREFIX }}/${APP_STAGE}/releases/be/${VERSION}/bizkit-be-${VERSION}.jar"
 
-          aws s3 cp "$OUT_JAR" "s3://$BUCKET/${RELEASE_KEY}" --cache-control no-cache
+          aws s3 cp "$JAR" "s3://$BUCKET/$RELEASE_KEY" --cache-control no-cache
 
           echo "BUCKET=$BUCKET" >> "$GITHUB_ENV"
           echo "RELEASE_KEY=$RELEASE_KEY" >> "$GITHUB_ENV"
@@ -120,21 +80,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="${{ steps.ver.outputs.value }}"
+          VERSION=${{ steps.ver.outputs.value }}
 
-          rm -rf bundle && mkdir -p bundle/codedeploy/be/hooks
+          rm -rf bundle && mkdir -p bundle/deploy
 
           cp codedeploy/be/appspec.yml bundle/appspec.yml
           cp deploy-be.sh bundle/deploy-be.sh
-          cp -r codedeploy/be/hooks/* bundle/codedeploy/be/hooks/
+          cp codedeploy/be/hooks/start.sh bundle/deploy/start.sh
+          cp codedeploy/be/hooks/stop.sh bundle/deploy/stop.sh
+          cp codedeploy/be/hooks/validate.sh bundle/deploy/validate.sh
 
-          ARCHIVE_URL="$(aws s3 presign "s3://$BUCKET/$RELEASE_KEY" --expires-in 3600)"
-          ESCAPED_URL=$(printf "%s" "$ARCHIVE_URL" | sed "s/'/'\\\\''/g")
-
-          cat > bundle/codedeploy/be/env.sh <<EOF
+          cat > bundle/deploy/env.sh <<EOF
           RELEASE_ID='${VERSION}'
-          ARCHIVE_URL='${ESCAPED_URL}'
-          HEALTH_URL='${HEALTH_URL}'
+          BUCKET='${BUCKET}'
+          RELEASE_KEY='${RELEASE_KEY}'
           EOF
 
           (cd bundle && zip -r ../bundle.zip .)
@@ -144,10 +103,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          VERSION="${{ steps.ver.outputs.value }}"
-          S3_PREFIX="${{ secrets.S3_PREFIX }}"
-          BUNDLE_KEY="${S3_PREFIX}/${APP_STAGE}/codedeploy/be/${VERSION}/bundle-${{ github.run_id }}.zip"
-
+          VERSION=${{ steps.ver.outputs.value }}
+          BUNDLE_KEY="${{ secrets.S3_PREFIX }}/${APP_STAGE}/codedeploy/be/${VERSION}/bundle-${{ github.run_id }}.zip"
           aws s3 cp bundle.zip "s3://$BUCKET/$BUNDLE_KEY"
           echo "BUNDLE_KEY=$BUNDLE_KEY" >> "$GITHUB_ENV"
 
@@ -155,7 +112,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-
           APP="${{ secrets.CODEDEPLOY_APP_BE_DEV }}"
           DG="${{ secrets.CODEDEPLOY_DG_BE_DEV }}"
 
@@ -169,20 +125,3 @@ jobs:
           echo "deploymentId=$DEPLOY_ID"
           aws deploy wait deployment-successful --deployment-id "$DEPLOY_ID"
           echo "CodeDeploy SUCCESS"
-
-      - name: Notify Discord on failure
-        if: failure()
-        env:
-          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-        run: |
-          MESSAGE="BE Dev CD 실패
-          Repo: \`${{ github.repository }}\`
-          Branch: \`${{ github.ref_name }}\`
-          Workflow: \`${{ github.workflow }}\`
-          Job: \`${{ github.job }}\`
-          Author: \`${{ github.actor }}\`
-          Stage: \`${APP_STAGE}\`
-          링크: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
-
-          JSON_MESSAGE=$(printf '%s\n' "$MESSAGE" | python3 -c 'import json,sys; print(json.dumps({"content": sys.stdin.read()}))')
-          curl -X POST -H "Content-Type: application/json" -d "$JSON_MESSAGE" "$DISCORD_WEBHOOK_URL"
