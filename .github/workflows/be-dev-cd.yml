@@ -91,7 +91,7 @@ jobs:
           set -euo pipefail
           VERSION=${{ steps.ver.outputs.value }}
 
-          rm -rf bundle && mkdir -p bundle/deploy bundle/codedeploy/be
+          rm -rf bundle && mkdir -p bundle/deploy bundle/codedeploy/be/hooks
 
           # appspec + hooks
           cp codedeploy/be/appspec.yml bundle/appspec.yml
