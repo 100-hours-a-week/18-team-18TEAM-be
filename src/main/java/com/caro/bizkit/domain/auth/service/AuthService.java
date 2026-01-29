@@ -71,6 +71,7 @@ public class AuthService {
                 String.valueOf(user.getId()),
                 Map.of()
         );
+        log.info("logged in with {}", account.getLoginEmail());
         return new AccessTokenResponse(token);
     }
 
