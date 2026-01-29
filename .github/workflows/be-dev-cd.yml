@@ -95,9 +95,10 @@ jobs:
 
           # appspec + hooks
           cp codedeploy/be/appspec.yml bundle/appspec.yml
-          cp codedeploy/be/hooks/start.sh bundle/deploy/start.sh
-          cp codedeploy/be/hooks/stop.sh bundle/deploy/stop.sh
-          cp codedeploy/be/hooks/validate.sh bundle/deploy/validate.sh
+          
+          cp codedeploy/be/hooks/start.sh bundle/codedeploy/be/hooks/start.sh
+          cp codedeploy/be/hooks/stop.sh bundle/codedeploy/be/hooks/stop.sh
+          cp codedeploy/be/hooks/validate.sh bundle/codedeploy/be/hooks/validate.sh
 
           cp deploy.sh bundle/deploy-be.sh
 
