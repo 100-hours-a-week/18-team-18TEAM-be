@@ -94,7 +94,7 @@ jobs:
           rm -rf bundle && mkdir -p bundle/deploy
 
           cp codedeploy/be/appspec.yml bundle/appspec.yml
-          cp deploy-be.sh bundle/deploy-be.sh
+          cp deploy-be.sh bundle/deploy.sh
           cp codedeploy/be/hooks/start.sh bundle/deploy/start.sh
           cp codedeploy/be/hooks/stop.sh bundle/deploy/stop.sh
           cp codedeploy/be/hooks/validate.sh bundle/deploy/validate.sh
