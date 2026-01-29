@@ -43,6 +43,18 @@ public class CardController {
         return ResponseEntity.ok(ApiResponse.success("내 명함 조회 성공", cards));
     }
 
+    @GetMapping("/me/latest")
+    @Operation(summary = "내 최신 명함 조회", description = "인증된 사용자의 가장 최근에 등록한 명함을 조회합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
+    })
+    public ResponseEntity<ApiResponse<CardResponse>> getMyLatestCard(
+            @AuthenticationPrincipal UserPrincipal user
+    ) {
+        CardResponse card = cardService.getMyLatestCard(user);
+        return ResponseEntity.ok(ApiResponse.success("내 최신 명함 조회 성공", card));
+    }
+
     @PostMapping("/me")
     @Operation(summary = "내 명함 생성", description = "인증된 사용자의 명함을 생성합니다.")
     @ApiResponses({

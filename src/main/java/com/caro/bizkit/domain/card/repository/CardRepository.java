@@ -8,4 +8,7 @@ import java.util.Optional;
 public interface CardRepository extends BaseRepository<Card, Integer> {
     List<Card> findAllByUserId(Integer userId);
     Optional<Card> findByUuid(String uuid);
+    Optional<Card> findTopByUserIdOrderByCreatedAtDesc(Integer userId);
+    List<Card> findAllByUserIdAndDeletedAtIsNull(Integer userId);
+    Optional<Card> findTopByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(Integer userId);
 }
