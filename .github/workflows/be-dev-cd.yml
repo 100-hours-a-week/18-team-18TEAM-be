@@ -32,7 +32,7 @@ jobs:
       - name: Set Up Node.js (for semantic-release)
         uses: actions/setup-node@v4
         with:
-          node-version: "22"
+          node-version: 22
 
       - name: Install semantic-release
         run: |
