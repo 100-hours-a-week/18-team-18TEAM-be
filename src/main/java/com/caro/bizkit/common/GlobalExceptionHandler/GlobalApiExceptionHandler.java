@@ -39,7 +39,7 @@ public class GlobalApiExceptionHandler extends ResponseEntityExceptionHandler {
         if (statusCode.is5xxServerError()) {
             safeMessage = "서버 내부 오류가 발생했습니다.";
         }
-        log.error("Error: {} | Status: {}", ex.getMessage(), statusCode);
+        log.error("Error: {} | Status: {} | at {}", ex.getMessage(), statusCode, ex.getStackTrace()[0]);
 
         return ResponseEntity
                 .status(statusCode)
@@ -53,9 +53,9 @@ public class GlobalApiExceptionHandler extends ResponseEntityExceptionHandler {
         String message = ex.getMessage();
 
         if (statusCode.is5xxServerError()) {
-            log.error("Custom Error: {} | Status: {}", message, statusCode);
+            log.error("Custom Error: {} | Status: {} | at {}", message, statusCode, ex.getStackTrace()[0]);
         } else {
-            log.warn("Custom Error: {} | Status: {}", message, statusCode);
+            log.warn("Custom Error: {} | Status: {} | at {}", message, statusCode, ex.getStackTrace()[0]);
         }
 
         return ResponseEntity
@@ -69,7 +69,7 @@ public class GlobalApiExceptionHandler extends ResponseEntityExceptionHandler {
         String message = ex.getMessage();
         String apiMessage = ex.getApiMessage();
 
-        log.warn("Custom Error: {} | Status: {}", apiMessage, statusCode);
+        log.warn("Custom Error: {} | Status: {} | at {}", apiMessage, statusCode, ex.getStackTrace()[0]);
 
 
         return ResponseEntity
@@ -84,9 +84,9 @@ public class GlobalApiExceptionHandler extends ResponseEntityExceptionHandler {
         String message = (ex.getReason() != null) ? ex.getReason() : "요청 처리 중 오류가 발생했습니다.";
 
         if (statusCode.is5xxServerError()) {
-            log.error("Server Error: {} | Status: {}", message, statusCode);
+            log.error("Server Error: {} | Status: {} | at {}", message, statusCode, ex.getStackTrace()[0]);
         } else {
-            log.warn("Client Error: {} | Status: {}", message, statusCode);
+            log.warn("Client Error: {} | Status: {} | at {}", message, statusCode, ex.getStackTrace()[0]);
         }
 
 
@@ -111,7 +111,7 @@ public class GlobalApiExceptionHandler extends ResponseEntityExceptionHandler {
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
 
 
-        log.error("[Internal Server Error] Message: {} | Status: {}", ex.getMessage(), status.value());
+        log.error("[Internal Server Error] Message: {} | Status: {} | at {}", ex.getMessage(), status.value(), ex.getStackTrace()[0]);
 
 
         return ResponseEntity
