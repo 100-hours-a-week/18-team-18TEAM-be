@@ -139,15 +139,6 @@ ExecStart=
 ExecStart=/usr/bin/java -XX:+ExitOnOutOfMemoryError -jar ${CURRENT_LINK}/bizkit-be-${RELEASE_ID}.jar --server.port=8080 --server.address=0.0.0.0
 EOF
 
-sudo ln -sfn "${TARGET_JAR}" "${CURRENT_LINK}/app.jar"
-
-sudo tee "${OVERRIDE_DIR}/override.conf" >/dev/null <<EOF
-[Service]
-EnvironmentFile=-${ENV_FILE}
-ExecStart=
-ExecStart=/usr/bin/java -XX:+ExitOnOutOfMemoryError -jar ${CURRENT_LINK}/app.jar --server.port=8080 --server.address=0.0.0.0
-EOF
-
 echo "[deploy-be] Restarting ${SERVICE_UNIT}"
 sudo systemctl daemon-reload
 sudo systemctl restart "${SERVICE_UNIT}"
