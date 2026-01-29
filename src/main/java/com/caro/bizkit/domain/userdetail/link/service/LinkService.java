@@ -24,18 +24,21 @@ public class LinkService {
     private final LinkRepository linkRepository;
     private final UserRepository userRepository;
 
+    @Transactional(readOnly = true)
     public List<LinkResponse> getMyLinks(UserPrincipal principal) {
         return linkRepository.findAllByUserId(principal.id()).stream()
                 .map(LinkResponse::from)
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public List<LinkResponse> getLinksByUserId(Integer userId) {
         return linkRepository.findAllByUserId(userId).stream()
                 .map(LinkResponse::from)
                 .toList();
     }
 
+    @Transactional
     public LinkResponse createMyLink(UserPrincipal principal, LinkRequest request) {
         User user = userRepository.getReferenceById(principal.id());
         Link linkEntity = Link.create(user, request.title(), request.link());
@@ -72,6 +75,7 @@ public class LinkService {
         }
     }
 
+    @Transactional
     @PreAuthorize("@linkSecurity.isOwner(#linkId, authentication)")
     public void deleteMyLink(UserPrincipal principal, Integer linkId) {
         Link linkEntity = linkRepository.findById(linkId)

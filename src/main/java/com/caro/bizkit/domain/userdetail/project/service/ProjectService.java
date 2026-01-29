@@ -25,18 +25,21 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
 
+    @Transactional(readOnly = true)
     public List<ProjectResponse> getMyProjects(UserPrincipal principal) {
         return projectRepository.findAllByUserId(principal.id()).stream()
                 .map(ProjectResponse::from)
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public List<ProjectResponse> getProjectsByUserId(Integer userId) {
         return projectRepository.findAllByUserId(userId).stream()
                 .map(ProjectResponse::from)
                 .toList();
     }
 
+    @Transactional
     public ProjectResponse createMyProject(UserPrincipal principal, ProjectRequest request) {
         User user = userRepository.getReferenceById(principal.id());
         Project project = Project.create(
@@ -106,6 +109,7 @@ public class ProjectService {
         }
     }
 
+    @Transactional
     @PreAuthorize("@projectSecurity.isOwner(#projectId, authentication)")
     public void deleteMyProject(UserPrincipal principal, Integer projectId) {
         Project project = projectRepository.findById(projectId)

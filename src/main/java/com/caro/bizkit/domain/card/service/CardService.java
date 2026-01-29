@@ -25,12 +25,14 @@ public class CardService {
     private final CardRepository cardRepository;
     private final UserRepository userRepository;
 
+    @Transactional(readOnly = true)
     public List<CardResponse> getMyCards(UserPrincipal principal) {
         return cardRepository.findAllByUserId(principal.id()).stream()
                 .map(CardResponse::from)
                 .toList();
     }
 
+    @Transactional
     public CardResponse createMyCard(UserPrincipal principal, CardRequest request) {
         User user = userRepository.getReferenceById(principal.id());
         Card card = Card.create(
@@ -113,6 +115,7 @@ public class CardService {
         }
     }
 
+    @Transactional
     @PreAuthorize("@cardSecurity.isOwner(#cardId, authentication)")
     public void deleteMyCard(UserPrincipal principal, Integer cardId) {
         Card card = cardRepository.findById(cardId)

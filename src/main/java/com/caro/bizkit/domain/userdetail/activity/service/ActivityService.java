@@ -25,18 +25,21 @@ public class ActivityService {
     private final ActivityRepository activityRepository;
     private final UserRepository userRepository;
 
+    @Transactional(readOnly = true)
     public List<ActivityResponse> getMyActivities(UserPrincipal principal) {
         return activityRepository.findAllByUserId(principal.id()).stream()
                 .map(ActivityResponse::from)
                 .toList();
     }
 
+    @Transactional(readOnly = true)
     public List<ActivityResponse> getActivitiesByUserId(Integer userId) {
         return activityRepository.findAllByUserId(userId).stream()
                 .map(ActivityResponse::from)
                 .toList();
     }
 
+    @Transactional
     public ActivityResponse createMyActivity(UserPrincipal principal, ActivityRequest request) {
         User user = userRepository.getReferenceById(principal.id());
         Activity activity = Activity.create(
@@ -94,6 +97,7 @@ public class ActivityService {
         }
     }
 
+    @Transactional
     @PreAuthorize("@activitySecurity.isOwner(#activityId, authentication)")
     public void deleteMyActivity(UserPrincipal principal, Integer activityId) {
         Activity activity = activityRepository.findById(activityId)
