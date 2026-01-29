@@ -1,54 +1,97 @@
-name: CD - Dev Deploy (BE, CodeDeploy)
+name: CD - DEV (BE)
 
 on:
-  pull_request:
-    branches: ["develop"]
-    types: [closed]
+  push:
+    branches: [ "develop" ]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
 
 concurrency:
-  group: be-dev-cd-${{ github.event.pull_request.number }}
-  cancel-in-progress: false
+  group: be-dev-cd-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   deploy:
-    if: github.event.pull_request.merged == true
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     env:
+      APP_NAME: "BizKit-BE"
       APP_STAGE: dev
-      S3_PREFIX: artifacts
       HEALTH_URL: http://127.0.0.1:8080/actuator/health
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
-      - name: Extract Version from PR body
+      - name: Set Up Node.js (for semantic-release)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install semantic-release
+        run: |
+          set -euo pipefail
+          npm i -g semantic-release@23 \
+            @semantic-release/commit-analyzer@12 \
+            @semantic-release/release-notes-generator@13 \
+            @semantic-release/changelog@6 \
+            @semantic-release/git@10 \
+            @semantic-release/github@10 \
+            @semantic-release/exec@6
+
+      - name: Semantic Release (dev) - bump gradle.properties
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          semantic-release
+
+      - name: Read version from gradle.properties
         id: ver
         shell: bash
         run: |
           set -euo pipefail
+          VERSION="$(grep -E '^version=' gradle.properties | head -n1 | cut -d= -f2 | tr -d ' \r\n\t')"
+          [[ -n "$VERSION" ]] || (echo "version not found in gradle.properties" >&2; exit 1)
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
 
-          PR_NO="${{ github.event.pull_request.number }}"
-          echo "PR_NO=$PR_NO" >> "$GITHUB_ENV"
+      - name: Set Up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "21"
+          cache: "gradle"
 
-          BODY="${{ github.event.pull_request.body }}"
-          VERSION="$(echo "$BODY" | sed -nE 's/.*Release[[:space:]]*:[[:space:]]*([A-Za-z0-9._-]+).*/\1/ip' | head -n1 || true)"
-          VERSION="$(echo "$VERSION" | tr -cd 'A-Za-z0-9._-')"
+      - name: Gradle Test
+        run: |
+          set -euo pipefail
+          ./gradlew test --no-daemon
 
-          if [[ -z "$VERSION" ]]; then
-            echo "PR body must include: Release: <version> (ex: Release: v0.1.1)" >&2
-            exit 1
-          fi
+      - name: Gradle Build (bootJar)
+        run: |
+          set -euo pipefail
+          ./gradlew clean bootJar --no-daemon
 
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+      - name: Prepare BE Deploy Artifact (jar)
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.ver.outputs.value }}"
 
-          HEAD_SHA="${{ github.event.pull_request.head.sha }}"
-          SHORT_SHA="${HEAD_SHA:0:7}"
-          echo "HEAD_SHA=$HEAD_SHA" >> "$GITHUB_ENV"
-          echo "SHORT_SHA=$SHORT_SHA" >> "$GITHUB_ENV"
+          JAR_PATH="$(ls -1 build/libs/*.jar | head -n1)"
+          [[ -f "$JAR_PATH" ]] || (echo "jar not found under build/libs" >&2; exit 1)
+
+          OUT_JAR="bizkit-be-${VERSION}.jar"
+          cp "$JAR_PATH" "$OUT_JAR"
+
+          echo "OUT_JAR=$OUT_JAR" >> "$GITHUB_ENV"
+          ls -al "$OUT_JAR"
 
       - name: Configure AWS Credentials (Access Key)
         uses: aws-actions/configure-aws-credentials@v4
@@ -57,73 +100,53 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Compute S3 keys
+      - name: Upload Build Artifact to S3
         shell: bash
         run: |
           set -euo pipefail
+          VERSION="${{ steps.ver.outputs.value }}"
           BUCKET="${{ secrets.S3_BUCKET }}"
+          S3_PREFIX="${{ secrets.S3_PREFIX }}"
 
-          PREMERGE_KEY="${S3_PREFIX}/${APP_STAGE}/premerge/${VERSION}/${SHORT_SHA}/bizkit-be-${VERSION}.jar"
-          RELEASE_KEY="${S3_PREFIX}/${APP_STAGE}/releases/${VERSION}/bizkit-be-${VERSION}.jar"
+          RELEASE_KEY="${S3_PREFIX}/${APP_STAGE}/releases/be/${VERSION}/bizkit-be-${VERSION}.jar"
+
+          aws s3 cp "$OUT_JAR" "s3://$BUCKET/${RELEASE_KEY}" --cache-control no-cache
 
           echo "BUCKET=$BUCKET" >> "$GITHUB_ENV"
-          echo "PREMERGE_KEY=$PREMERGE_KEY" >> "$GITHUB_ENV"
           echo "RELEASE_KEY=$RELEASE_KEY" >> "$GITHUB_ENV"
 
-      - name: Promote premerge artifact -> release key (S3 copy)
+      - name: Build CodeDeploy bundle (BE)
         shell: bash
         run: |
           set -euo pipefail
-
-          aws s3api head-object --bucket "$BUCKET" --key "$PREMERGE_KEY" >/dev/null
-
-          # 릴리즈 키에 이미 있으면 스킵
-          if aws s3api head-object --bucket "$BUCKET" --key "$RELEASE_KEY" >/dev/null 2>&1; then
-            echo "release artifact already exists: s3://$BUCKET/$RELEASE_KEY"
-            exit 0
-          fi
-
-          aws s3api copy-object \
-            --bucket "$BUCKET" \
-            --copy-source "$BUCKET/$PREMERGE_KEY" \
-            --key "$RELEASE_KEY"
-
-          echo "promoted -> s3://$BUCKET/$RELEASE_KEY"
-
-      - name: Create presigned URL for jar (1h)
-        shell: bash
-        run: |
-          set -euo pipefail
-          JAR_URL="$(aws s3 presign "s3://$BUCKET/$RELEASE_KEY" --expires-in 3600)"
-          echo "JAR_URL=$JAR_URL" >> "$GITHUB_ENV"
-
-      - name: Build CodeDeploy bundle (appspec + hooks + deploy-be.sh)
-        shell: bash
-        run: |
-          set -euo pipefail
+          VERSION="${{ steps.ver.outputs.value }}"
 
           rm -rf bundle && mkdir -p bundle/codedeploy/be/hooks
 
-          # appspec + hooks + deploy script 포함
           cp codedeploy/be/appspec.yml bundle/appspec.yml
           cp deploy-be.sh bundle/deploy-be.sh
           cp -r codedeploy/be/hooks/* bundle/codedeploy/be/hooks/
 
-          # 런타임 값 주입(Release ID, jar presigned url)
-          ESCAPED_JAR_URL=$(printf "%s" "$JAR_URL" | sed "s/'/'\\\\''/g")
+          ARCHIVE_URL="$(aws s3 presign "s3://$BUCKET/$RELEASE_KEY" --expires-in 3600)"
+          ESCAPED_URL=$(printf "%s" "$ARCHIVE_URL" | sed "s/'/'\\\\''/g")
 
           cat > bundle/codedeploy/be/env.sh <<EOF
           RELEASE_ID='${VERSION}'
-          JAR_URL='${ESCAPED_JAR_URL}'
+          ARCHIVE_URL='${ESCAPED_URL}'
+          HEALTH_URL='${HEALTH_URL}'
           EOF
 
           (cd bundle && zip -r ../bundle.zip .)
+          unzip -l bundle.zip
 
       - name: Upload bundle.zip to S3
         shell: bash
         run: |
           set -euo pipefail
+          VERSION="${{ steps.ver.outputs.value }}"
+          S3_PREFIX="${{ secrets.S3_PREFIX }}"
           BUNDLE_KEY="${S3_PREFIX}/${APP_STAGE}/codedeploy/be/${VERSION}/bundle-${{ github.run_id }}.zip"
+
           aws s3 cp bundle.zip "s3://$BUCKET/$BUNDLE_KEY"
           echo "BUNDLE_KEY=$BUNDLE_KEY" >> "$GITHUB_ENV"
 
@@ -153,9 +176,12 @@ jobs:
         run: |
           MESSAGE="BE Dev CD 실패
           Repo: \`${{ github.repository }}\`
-          PR: #${{ github.event.pull_request.number }}
-          Version: \`${VERSION}\`
-          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          Branch: \`${{ github.ref_name }}\`
+          Workflow: \`${{ github.workflow }}\`
+          Job: \`${{ github.job }}\`
+          Author: \`${{ github.actor }}\`
+          Stage: \`${APP_STAGE}\`
+          링크: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
           JSON_MESSAGE=$(printf '%s\n' "$MESSAGE" | python3 -c 'import json,sys; print(json.dumps({"content": sys.stdin.read()}))')
           curl -X POST -H "Content-Type: application/json" -d "$JSON_MESSAGE" "$DISCORD_WEBHOOK_URL"

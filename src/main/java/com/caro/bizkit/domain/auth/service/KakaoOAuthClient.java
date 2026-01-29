@@ -36,7 +36,6 @@ public class KakaoOAuthClient {
         String client_secret = properties.getClientSecret();
         String redirect_uri = properties.getRedirectUri();
 
-
         if (!StringUtils.hasText(client_id) || !StringUtils.hasText(client_secret) || !StringUtils.hasText(redirect_uri)) {
             log.error("Kakao OAuth config missing. clientId={}, redirectUri={}", client_id, redirect_uri);
             throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, "Kakao OAuth 설정이 누락되었습니다.");
