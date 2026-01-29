@@ -43,7 +43,8 @@ jobs:
             @semantic-release/changelog@6 \
             @semantic-release/git@10 \
             @semantic-release/github@10 \
-            @semantic-release/exec@6
+            @semantic-release/exec@6 \
+            conventional-changelog-conventionalcommits@8
 
       - name: Semantic Release (dev) - bump gradle.properties
         env:
