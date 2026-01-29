@@ -29,8 +29,6 @@ public record CardRequest(
         LocalDate end_date,
         Boolean is_progress,
         @Size(max = 500)
-        String qr_image_key,
-        @Size(max = 500)
         String ai_image_key
 ) {
 }
