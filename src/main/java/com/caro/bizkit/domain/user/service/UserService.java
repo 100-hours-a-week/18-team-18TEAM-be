@@ -34,7 +34,7 @@ public class UserService {
     public UserResponse getMyStatus(UserPrincipal user) {
         String profileImageUrl = null;
         if (user != null && StringUtils.hasText(user.profile_image_key())) {
-            profileImageUrl = s3Service.createReadUrl(user.profile_image_key()).url();
+            profileImageUrl = s3Service.getPublicUrl(user.profile_image_key());
         }
         return UserResponse.fromPrincipal(user, profileImageUrl);
     }
@@ -119,7 +119,7 @@ public class UserService {
     private UserResponse toResponse(User user) {
         String profileImageUrl = null;
         if (StringUtils.hasText(user.getProfileImageKey())) {
-            profileImageUrl = s3Service.createReadUrl(user.getProfileImageKey()).url();
+            profileImageUrl = s3Service.getPublicUrl(user.getProfileImageKey());
         }
         return new UserResponse(
                 user.getId(),

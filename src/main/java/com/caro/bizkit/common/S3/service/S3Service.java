@@ -14,11 +14,8 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
-import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
-import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignRequest;
-import software.amazon.awssdk.services.s3.presigner.model.PresignedGetObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PresignedPutObjectRequest;
 import software.amazon.awssdk.services.s3.presigner.model.PutObjectPresignRequest;
 
@@ -54,23 +51,13 @@ public class S3Service {
         return key;
     }
 
-    public PresignedUrlResponse createReadUrl(String key) {
+    public String getPublicUrl(String key) {
         String bucket = requireBucket();
         String normalizedKey = requireKey(key);
-        GetObjectRequest getObjectRequest = GetObjectRequest.builder()
-                .bucket(bucket)
-                .key(normalizedKey)
-                .build();
-        GetObjectPresignRequest presignRequest = GetObjectPresignRequest.builder()
-                .signatureDuration(Duration.ofSeconds(s3Properties.getPresignedUrlExpirationSeconds()))
-                .getObjectRequest(getObjectRequest)
-                .build();
-        PresignedGetObjectRequest presignedRequest = s3Presigner.presignGetObject(presignRequest);
-        return new PresignedUrlResponse(
-                presignedRequest.url().toString(),
-                normalizedKey,
-                s3Properties.getPresignedUrlExpirationSeconds()
-        );
+        return String.format("https://%s.s3.%s.amazonaws.com/%s",
+                bucket,
+                s3Properties.getRegion(),
+                normalizedKey);
     }
 
     public void deleteObject(String key) {
