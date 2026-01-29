@@ -3,7 +3,7 @@ package com.caro.bizkit.domain.card.controller;
 import com.caro.bizkit.common.ApiResponse.ApiResponse;
 import com.caro.bizkit.domain.card.dto.CardRequest;
 import com.caro.bizkit.domain.card.dto.CardResponse;
-import com.caro.bizkit.domain.card.dto.CardUpdateRequest;
+import java.util.Map;
 import com.caro.bizkit.domain.card.service.CardService;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -56,15 +56,15 @@ public class CardController {
         return ResponseEntity.ok(ApiResponse.success("내 명함 생성 성공", card));
     }
 
-    @PutMapping("/{card_id}")
-    @Operation(summary = "내 명함 수정", description = "명함 정보를 수정합니다. null 값은 반영하지 않습니다.")
+    @PatchMapping("/{card_id}")
+    @Operation(summary = "내 명함 수정", description = "명함 정보를 수정합니다.")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
     })
     public ResponseEntity<ApiResponse<CardResponse>> updateMyCard(
             @AuthenticationPrincipal UserPrincipal user,
             @PathVariable("card_id") Integer cardId,
-            @Valid @RequestBody CardUpdateRequest request
+            @RequestBody Map<String, Object> request
     ) {
         CardResponse card = cardService.updateMyCard(user, cardId, request);
         return ResponseEntity.ok(ApiResponse.success("내 명함 수정 성공", card));

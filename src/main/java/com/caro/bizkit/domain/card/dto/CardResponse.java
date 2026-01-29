@@ -16,7 +16,6 @@ public record CardResponse(
         LocalDate start_date,
         LocalDate end_date,
         Boolean is_progress,
-        String qr_image_key,
         String ai_image_key
 ) {
     public static CardResponse from(Card card) {
@@ -33,7 +32,6 @@ public record CardResponse(
                 card.getStartDate(),
                 card.getEndDate(),
                 card.getIsProgress(),
-                card.getQrImageKey(),
                 card.getAiImageKey()
         );
     }

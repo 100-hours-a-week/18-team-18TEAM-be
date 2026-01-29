@@ -5,7 +5,7 @@ import com.caro.bizkit.domain.auth.dto.AccessTokenResponse;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.userdetail.project.dto.ProjectRequest;
 import com.caro.bizkit.domain.userdetail.project.dto.ProjectResponse;
-import com.caro.bizkit.domain.userdetail.project.dto.ProjectUpdateRequest;
+import java.util.Map;
 import com.caro.bizkit.domain.userdetail.project.service.ProjectService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -19,7 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -73,15 +73,15 @@ public class ProjectController {
         return ResponseEntity.ok(ApiResponse.success("내 프로젝트 생성 성공", project));
     }
 
-    @PutMapping("/{project_id}")
-    @Operation(summary = "프로젝트 수정", description = "프로젝트 정보를 수정합니다. null 값은 반영하지 않습니다.")
+    @PatchMapping("/{project_id}")
+    @Operation(summary = "프로젝트 수정", description = "프로젝트 정보를 수정합니다.")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
     })
     public ResponseEntity<ApiResponse<ProjectResponse>> updateProject(
             @AuthenticationPrincipal UserPrincipal user,
             @PathVariable("project_id") Integer projectId,
-            @RequestBody ProjectUpdateRequest request
+            @RequestBody Map<String, Object> request
     ) {
         ProjectResponse project = projectService.updateMyProject(user, projectId, request);
         return ResponseEntity.ok(ApiResponse.success("프로젝트 수정 성공", project));
