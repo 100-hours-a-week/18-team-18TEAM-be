@@ -11,6 +11,11 @@ module.exports = {
       assets: ["gradle.properties"],
       message: "chore(release): ${nextRelease.version} [skip ci]"
     }],
-    "@semantic-release/github"
+    ["@semantic-release/github", {
+      successComment: false,
+      failComment: false,
+      labels: false,
+      releasedLabels: false
+    }]
   ]
 };
