@@ -40,19 +40,19 @@ public class S3Controller {
     }
 
     @GetMapping()
-    @Operation(summary = "읽기 Presigned URL 생성", description = "읽기용 presigned URL을 생성합니다.")
+    @Operation(summary = "공개 URL 조회", description = "S3 객체의 공개 URL을 반환합니다.")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
-                    description = "생성 성공",
-                    content = @Content(schema = @Schema(implementation = PresignedUrlResponse.class))
+                    description = "조회 성공",
+                    content = @Content(schema = @Schema(implementation = String.class))
             )
     })
-    public ResponseEntity<PresignedUrlResponse> createReadUrl(@RequestParam String key) {
-        return ResponseEntity.ok(s3Service.createReadUrl(key));
+    public ResponseEntity<String> getPublicUrl(@RequestParam String key) {
+        return ResponseEntity.ok(s3Service.getPublicUrl(key));
     }
 
-    @Profile("dev")
+
     @DeleteMapping
     @Operation(summary = "객체 삭제", description = "S3 객체를 삭제합니다.")
     @ApiResponses({
