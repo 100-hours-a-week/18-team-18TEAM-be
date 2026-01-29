@@ -15,6 +15,7 @@ concurrency:
 
 jobs:
   deploy:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
 
@@ -40,8 +41,8 @@ jobs:
         with:
           node-version: "22"
 
-      - name: Install release deps (npm ci)
-        run: npm ci
+      - name: Install release deps
+        run: npm install --no-audit --no-fund
 
       - name: Semantic Release (dev)
         env:
