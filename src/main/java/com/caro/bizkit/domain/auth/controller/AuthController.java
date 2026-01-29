@@ -47,7 +47,7 @@ public class AuthController {
             @PathVariable String provider,
             @Valid @RequestBody LoginRequest request
     ) {
-        return ResponseEntity.ok(authService.login(provider, request.code()));
+        return ResponseEntity.ok(authService.login(provider, request.code(), request.redirectUri()));
     }
 
     @GetMapping("/kakao/callback")
