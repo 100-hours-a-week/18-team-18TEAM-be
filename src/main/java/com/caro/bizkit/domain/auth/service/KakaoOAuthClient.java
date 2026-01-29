@@ -31,22 +31,21 @@ public class KakaoOAuthClient {
     private final KakaoOAuthProperties properties;
     private final WebClient.Builder webClientBuilder;
 
-    public KakaoTokenResponse exchangeCodeForToken(String code, String host) {
+    public KakaoTokenResponse exchangeCodeForToken(String code, String redirectUri) {
         var form = new LinkedMultiValueMap<String, String>();
 
         String client_id = properties.getClientId();
         String client_secret = properties.getClientSecret();
-        String redirect_uri = properties.getRedirectUri(host);
 
-        if (!StringUtils.hasText(client_id) || !StringUtils.hasText(client_secret) || !StringUtils.hasText(redirect_uri)) {
-            log.error("Kakao OAuth config missing. clientId={}, redirectUri={}", client_id, redirect_uri);
+        if (!StringUtils.hasText(client_id) || !StringUtils.hasText(client_secret) || !StringUtils.hasText(redirectUri)) {
+            log.error("Kakao OAuth config missing. clientId={}, redirectUri={}", client_id, redirectUri);
             throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, "Kakao OAuth 설정이 누락되었습니다.");
         }
 
         form.add("grant_type", "authorization_code");
         form.add("client_id", client_id);
         form.add("client_secret", client_secret);
-        form.add("redirect_uri", redirect_uri);
+        form.add("redirect_uri", redirectUri);
         form.add("code", code);
 
 
