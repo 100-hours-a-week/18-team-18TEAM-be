@@ -9,6 +9,7 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -45,9 +46,14 @@ public class AuthController {
     public ResponseEntity<AccessTokenResponse> login(
             @Parameter(description = "소셜 로그인 제공자", example = "kakao")
             @PathVariable String provider,
-            @Valid @RequestBody LoginRequest request
+            @Valid @RequestBody LoginRequest request,
+            HttpServletRequest httpRequest
     ) {
-        return ResponseEntity.ok(authService.login(provider, request.code()));
+        String host = httpRequest.getHeader("Origin");
+        if (host == null) {
+            host = httpRequest.getHeader("Host");
+        }
+        return ResponseEntity.ok(authService.login(provider, request.code(), host));
     }
 
     @GetMapping("/kakao/callback")

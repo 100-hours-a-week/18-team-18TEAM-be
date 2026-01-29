@@ -31,13 +31,12 @@ public class KakaoOAuthClient {
     private final KakaoOAuthProperties properties;
     private final WebClient.Builder webClientBuilder;
 
-    public KakaoTokenResponse exchangeCodeForToken(String code) {
+    public KakaoTokenResponse exchangeCodeForToken(String code, String host) {
         var form = new LinkedMultiValueMap<String, String>();
 
         String client_id = properties.getClientId();
         String client_secret = properties.getClientSecret();
-        String redirect_uri = properties.getRedirectUri();
-
+        String redirect_uri = properties.getRedirectUri(host);
 
         if (!StringUtils.hasText(client_id) || !StringUtils.hasText(client_secret) || !StringUtils.hasText(redirect_uri)) {
             log.error("Kakao OAuth config missing. clientId={}, redirectUri={}", client_id, redirect_uri);
@@ -45,9 +44,9 @@ public class KakaoOAuthClient {
         }
 
         form.add("grant_type", "authorization_code");
-        form.add("client_id", properties.getClientId());
-        form.add("client_secret", properties.getClientSecret());
-        form.add("redirect_uri", properties.getRedirectUri());
+        form.add("client_id", client_id);
+        form.add("client_secret", client_secret);
+        form.add("redirect_uri", redirect_uri);
         form.add("code", code);
 
 
