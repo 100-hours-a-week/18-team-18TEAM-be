@@ -37,11 +37,11 @@ public class AuthService {
 
 
     @Transactional
-    public AccessTokenResponse login(String provider, String code, String host) {
+    public AccessTokenResponse login(String provider, String code) {
         if (!"kakao".equalsIgnoreCase(provider)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported provider: " + provider);
         }
-        KakaoTokenResponse tokenResponse = kakaoOAuthClient.exchangeCodeForToken(code, host);
+        KakaoTokenResponse tokenResponse = kakaoOAuthClient.exchangeCodeForToken(code);
         if (tokenResponse == null || !StringUtils.hasText(tokenResponse.accessToken())) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Failed to get access token");
         }
