@@ -43,6 +43,8 @@ public class KakaoOAuthClient {
             throw new CustomException(HttpStatus.INTERNAL_SERVER_ERROR, "Kakao OAuth 설정이 누락되었습니다.");
         }
 
+        log.info("Kakao OAuth token exchange - host: {}, redirect_uri: {}", host, redirect_uri);
+
         form.add("grant_type", "authorization_code");
         form.add("client_id", client_id);
         form.add("client_secret", client_secret);
