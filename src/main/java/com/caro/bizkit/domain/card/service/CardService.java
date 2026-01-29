@@ -27,7 +27,7 @@ public class CardService {
 
     @Transactional(readOnly = true)
     public List<CardResponse> getMyCards(UserPrincipal principal) {
-        return cardRepository.findAllByUserIdAndDeletedAtIsNull(principal.id()).stream()
+        return cardRepository.findAllByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(principal.id()).stream()
                 .map(CardResponse::from)
                 .toList();
     }
