@@ -61,7 +61,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ./gradlew clean build -x test
+          ./gradlew clean bootJar -x test 
 
       - name: Configure AWS Credentials (Access Key)
         uses: aws-actions/configure-aws-credentials@v4
