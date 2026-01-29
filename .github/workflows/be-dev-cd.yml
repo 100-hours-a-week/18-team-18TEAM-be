@@ -91,18 +91,22 @@ jobs:
           set -euo pipefail
           VERSION=${{ steps.ver.outputs.value }}
 
-          rm -rf bundle && mkdir -p bundle/deploy
+          rm -rf bundle && mkdir -p bundle/deploy bundle/codedeploy/be
 
+          # appspec + hooks
           cp codedeploy/be/appspec.yml bundle/appspec.yml
-          cp deploy-be.sh bundle/deploy.sh
           cp codedeploy/be/hooks/start.sh bundle/deploy/start.sh
           cp codedeploy/be/hooks/stop.sh bundle/deploy/stop.sh
           cp codedeploy/be/hooks/validate.sh bundle/deploy/validate.sh
 
-          cat > bundle/deploy/env.sh <<EOF
+          cp deploy.sh bundle/deploy-be.sh
+
+          ARCHIVE_URL="$(aws s3 presign "s3://${BUCKET}/${RELEASE_KEY}" --expires-in 3600)"
+          ESCAPED_URL=$(printf "%s" "$ARCHIVE_URL" | sed "s/'/'\\\\''/g")
+
+          cat > bundle/codedeploy/be/env.sh <<EOF
           RELEASE_ID='${VERSION}'
-          BUCKET='${BUCKET}'
-          RELEASE_KEY='${RELEASE_KEY}'
+          ARCHIVE_URL='${ESCAPED_URL}'
           EOF
 
           (cd bundle && zip -r ../bundle.zip .)
