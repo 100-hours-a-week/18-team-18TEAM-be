@@ -35,10 +35,18 @@ jobs:
           distribution: temurin
           java-version: "21"
 
+      - name: Set Up Node.js (for semantic-release)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install release deps (npm ci)
+        run: npm ci
+
       - name: Semantic Release (dev)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: npx semantic-release
+        run: npx --no-install semantic-release
 
       - name: Read version from gradle.properties
         id: ver
