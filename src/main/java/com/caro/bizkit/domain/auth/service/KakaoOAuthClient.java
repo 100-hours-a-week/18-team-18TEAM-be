@@ -48,6 +48,8 @@ public class KakaoOAuthClient {
         form.add("redirect_uri", redirectUri);
         form.add("code", code);
 
+        log.info("[OAuth] Kakao로 보내는 redirect_uri: {}", redirectUri);
+
 
 
 

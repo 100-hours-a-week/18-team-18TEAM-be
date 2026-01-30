@@ -38,6 +38,7 @@ public class AuthService {
 
     @Transactional
     public AccessTokenResponse login(String provider, String code, String redirectUri) {
+        log.info("[OAuth] Client가 보낸 redirect_uri: {}", redirectUri);
         if (!"kakao".equalsIgnoreCase(provider)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported provider: " + provider);
         }
