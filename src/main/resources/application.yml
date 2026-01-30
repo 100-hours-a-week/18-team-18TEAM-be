@@ -1,4 +1,7 @@
 spring:
+  config:
+    import:
+      - optional:file:.env[.properties]
   datasource:
     url: ${SPRING_DATASOURCE_URL:}
     username: ${SPRING_DATASOURCE_USERNAME:}
@@ -17,10 +20,23 @@ spring:
       password: ${REDIS_PASSWORD:}
 
 management:
+  server:
+    base-path: /actuator
   endpoints:
     web:
       exposure:
-        include: "health"
+        include: prometheus, health, metrics
+  metrics:
+    tags:
+      application: ${APP_NAME}
+      env: ${SPRING_PROFILES_ACTIVE}
+
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        dependency.timer: true
+      percentiles:
+        http.server.requests: 0.9, 0.95, 0.99
 
 oauth:
   kakao:
