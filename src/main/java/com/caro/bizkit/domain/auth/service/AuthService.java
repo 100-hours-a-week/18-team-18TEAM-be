@@ -6,7 +6,6 @@ import com.caro.bizkit.domain.auth.entity.Account;
 import com.caro.bizkit.domain.auth.entity.OAuth;
 import com.caro.bizkit.domain.auth.repository.AccountRepository;
 import com.caro.bizkit.domain.auth.repository.OAuthRepository;
-import com.caro.bizkit.domain.auth.dto.AccessTokenResponse;
 import com.caro.bizkit.domain.user.entity.AiUsage;
 import com.caro.bizkit.domain.user.entity.User;
 import com.caro.bizkit.domain.user.repository.AiUsageRepository;
@@ -37,7 +36,7 @@ public class AuthService {
 
 
     @Transactional
-    public AccessTokenResponse login(String provider, String code, String redirectUri) {
+    public String login(String provider, String code, String redirectUri) {
         if (!"kakao".equalsIgnoreCase(provider)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported provider: " + provider);
         }
@@ -72,7 +71,7 @@ public class AuthService {
                 Map.of()
         );
         log.info("logged in with {}", account.getLoginEmail());
-        return new AccessTokenResponse(token);
+        return token;
     }
 
     @Transactional
