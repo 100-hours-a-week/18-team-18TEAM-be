@@ -49,9 +49,6 @@ public class UserController {
 
     @PatchMapping("/me")
     @Operation(summary = "내 정보 수정", description = "내 사용자 정보를 수정합니다.")
-    @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
-    })
     public ResponseEntity<?> updateMyStatus(
             @AuthenticationPrincipal UserPrincipal user,
             @RequestBody Map<String, Object> request
@@ -59,11 +56,10 @@ public class UserController {
         UserResponse userResponse = userService.updateMyStatus(user, request);
         return ResponseEntity.ok(ApiResponse.success("내 정보 수정 성공", userResponse));
     }
+
+
     @DeleteMapping("/me")
     @Operation(summary = "회원 탈퇴", description = "카카오 연결 해제 후 계정을 탈퇴 처리합니다.")
-    @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
-    })
     public ResponseEntity<ApiResponse<Void>> withdraw(
             @AuthenticationPrincipal UserPrincipal user
     ) {

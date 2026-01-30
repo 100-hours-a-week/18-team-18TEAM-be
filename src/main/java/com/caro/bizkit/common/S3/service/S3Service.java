@@ -29,25 +29,25 @@ public class S3Service {
     private final S3Properties s3Properties;
 
 
-    public PresignedUrlResponse createUploadUrl(String key, String contentType) {
-        return presignPutObject(key, contentType);
+    public PresignedUrlResponse createUploadUrl(String key) {
+        return presignPutObject(key);
     }
 
 
 
-    public String createObjectKey(UploadCategory type, String contentType) {
+    public String createObjectKey(UploadCategory type, String originName) {
         if (type == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "S3 upload category is required");
         }
         String cleanedPrefix = type.prefix();
         String datePath = LocalDate.now().toString().replace("-", "/");
-        String extension = extensionFromContentType(contentType);
+        String extension = extractExtension(originName);
         String uuid = UUID.randomUUID().toString().replace("-", "");
         if (StringUtils.hasText(extension)) {
             return cleanedPrefix + "/" + datePath + "/" + uuid + "." + extension;
         }
         String key = cleanedPrefix + "/" + datePath + "/" + uuid;
-        log.warn("Content type has no known extension: {}", contentType);
+        log.warn("No extension found in originName: {}", originName);
         return key;
     }
 
@@ -70,19 +70,17 @@ public class S3Service {
         s3Client.deleteObject(request);
     }
 
-    private PresignedUrlResponse presignPutObject(String key, String contentType) {
+    private PresignedUrlResponse presignPutObject(String key) {
         String bucket = requireBucket();
         String normalizedKey = requireKey(key);
-        PutObjectRequest.Builder requestBuilder = PutObjectRequest.builder()
+        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
                 .bucket(bucket)
-                .key(normalizedKey);
-        if (StringUtils.hasText(contentType)) {
-            requestBuilder.contentType(contentType);
-        }
+                .key(normalizedKey)
+                .build();
 
         PutObjectPresignRequest presignRequest = PutObjectPresignRequest.builder()
                 .signatureDuration(Duration.ofSeconds(s3Properties.getPresignedUrlExpirationSeconds()))
-                .putObjectRequest(requestBuilder.build())
+                .putObjectRequest(putObjectRequest)
                 .build();
         PresignedPutObjectRequest presignedRequest = s3Presigner.presignPutObject(presignRequest);
 
@@ -108,23 +106,14 @@ public class S3Service {
     }
 
 
-    // contentType에서 확장자 매핑
-    private String extensionFromContentType(String contentType) {
-        if (!StringUtils.hasText(contentType)) {
+    private String extractExtension(String originName) {
+        if (!StringUtils.hasText(originName)) {
             return "";
         }
-        String normalized = contentType.split(";", 2)[0].trim().toLowerCase();
-        return switch (normalized) {
-            case "image/jpeg" -> "jpg";
-            case "image/png" -> "png";
-            case "image/gif" -> "gif";
-            case "image/webp" -> "webp";
-            case "image/svg+xml" -> "svg";
-            case "image/heic" -> "heic";
-            case "image/heif" -> "heif";
-            case "application/pdf" -> "pdf";
-            case "text/plain" -> "txt";
-            default -> "";
-        };
+        int lastDotIndex = originName.lastIndexOf('.');
+        if (lastDotIndex == -1 || lastDotIndex == originName.length() - 1) {
+            return "";
+        }
+        return originName.substring(lastDotIndex + 1).toLowerCase();
     }
 }
