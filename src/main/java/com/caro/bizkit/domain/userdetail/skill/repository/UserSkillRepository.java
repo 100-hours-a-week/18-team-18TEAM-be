@@ -12,4 +12,6 @@ public interface UserSkillRepository extends BaseRepository<UserSkill, Integer> 
     List<UserSkill> findAllByUserId(@Param("userId") Integer userId);
 
     Optional<UserSkill> findByUserIdAndSkillId(Integer userId, Integer skillId);
+
+    void deleteAllByUserId(Integer userId);
 }
