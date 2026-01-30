@@ -8,7 +8,7 @@ public record PresignedUploadRequest(
         @NotNull(message = "업로드 카테고리는 필수입니다.")
         UploadCategory category,
 
-        @NotBlank(message = "컨텐츠 타입은 필수입니다.")
-        String contentType
+        @NotBlank(message = "원본 파일명은 필수입니다.")
+        String originName
 ) {
 }
