@@ -11,6 +11,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -19,31 +20,51 @@ import org.springframework.web.context.request.WebRequest;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 
+import java.util.stream.Collectors;
+
 
 @Slf4j
 @RestControllerAdvice(annotations = RestController.class)
 public class GlobalApiExceptionHandler extends ResponseEntityExceptionHandler {
 
+    @Override
+    protected ResponseEntity<Object> handleMethodArgumentNotValid(
+            MethodArgumentNotValidException ex,
+            HttpHeaders headers,
+            HttpStatusCode status,
+            WebRequest request) {
 
+        String errorMessage = ex.getBindingResult().getFieldErrors().stream()
+                .map(error -> error.getField() + ": " + error.getDefaultMessage())
+                .collect(Collectors.joining(", "));
+
+        log.warn("Validation Error: {} | Status: {}", errorMessage, status);
+
+        return ResponseEntity
+                .status(status)
+                .body(ApiResponse.failed(status, errorMessage));
+    }
 
     @Override
     protected ResponseEntity<Object> handleExceptionInternal(
             Exception ex, Object body, HttpHeaders headers, HttpStatusCode statusCode, WebRequest request) {
 
+        String message;
 
-
-
-        String safeMessage = "요청이 올바르지 않습니다.";
-
-        // 만약 여기서 500이 잡혔다면(JSON 변환 실패 등), 메시지를 숨겨야 함
         if (statusCode.is5xxServerError()) {
-            safeMessage = "서버 내부 오류가 발생했습니다.";
+            // 5xx: 내부 정보 숨김
+            message = "서버 내부 오류가 발생했습니다.";
+            log.error("Error: {} | Status: {} | at {}", ex.getMessage(), statusCode, ex.getStackTrace()[0]);
+        } else {
+
+            // 4xx: 실제 에러 메시지 노출
+            message = ex.getMessage();
+            log.warn("Error: {} | Status: {} | at {}", ex.getMessage(), statusCode, ex.getStackTrace()[0]);
         }
-        log.error("Error: {} | Status: {}", ex.getMessage(), statusCode);
 
         return ResponseEntity
                 .status(statusCode)
-                .body(ApiResponse.failed(statusCode, safeMessage));
+                .body(ApiResponse.failed(statusCode, message));
     }
 
     @ExceptionHandler(CustomException.class)
@@ -53,9 +74,9 @@ public class GlobalApiExceptionHandler extends ResponseEntityExceptionHandler {
         String message = ex.getMessage();
 
         if (statusCode.is5xxServerError()) {
-            log.error("Custom Error: {} | Status: {}", message, statusCode);
+            log.error("Custom Error: {} | Status: {} | at {}", message, statusCode, ex.getStackTrace()[0]);
         } else {
-            log.warn("Custom Error: {} | Status: {}", message, statusCode);
+            log.warn("Custom Error: {} | Status: {} | at {}", message, statusCode, ex.getStackTrace()[0]);
         }
 
         return ResponseEntity
@@ -69,7 +90,7 @@ public class GlobalApiExceptionHandler extends ResponseEntityExceptionHandler {
         String message = ex.getMessage();
         String apiMessage = ex.getApiMessage();
 
-        log.warn("Custom Error: {} | Status: {}", apiMessage, statusCode);
+        log.warn("Custom Error: {} | Status: {} | at {}", apiMessage, statusCode, ex.getStackTrace()[0]);
 
 
         return ResponseEntity
@@ -84,9 +105,9 @@ public class GlobalApiExceptionHandler extends ResponseEntityExceptionHandler {
         String message = (ex.getReason() != null) ? ex.getReason() : "요청 처리 중 오류가 발생했습니다.";
 
         if (statusCode.is5xxServerError()) {
-            log.error("Server Error: {} | Status: {}", message, statusCode);
+            log.error("Server Error: {} | Status: {} | at {}", message, statusCode, ex.getStackTrace()[0]);
         } else {
-            log.warn("Client Error: {} | Status: {}", message, statusCode);
+            log.warn("Client Error: {} | Status: {} | at {}", message, statusCode, ex.getStackTrace()[0]);
         }
 
 
@@ -111,7 +132,7 @@ public class GlobalApiExceptionHandler extends ResponseEntityExceptionHandler {
         HttpStatus status = HttpStatus.INTERNAL_SERVER_ERROR;
 
 
-        log.error("[Internal Server Error] Message: {} | Status: {}", ex.getMessage(), status.value());
+        log.error("[Internal Server Error] Message: {} | Status: {} | at {}", ex.getMessage(), status.value(), ex.getStackTrace()[0]);
 
 
         return ResponseEntity

@@ -8,6 +8,7 @@ import com.caro.bizkit.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.time.LocalDate;
 import com.github.f4b6a3.uuid.UuidCreator;
@@ -17,6 +18,7 @@ import com.github.f4b6a3.uuid.UuidCreator;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "card")
 @SQLDelete(sql = "UPDATE card SET deleted_at = CURRENT_TIMESTAMP WHERE id = ?")
+@SQLRestriction("")
 public class Card extends BaseTimeEntity {
 
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)

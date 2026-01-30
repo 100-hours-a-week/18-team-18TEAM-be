@@ -12,10 +12,6 @@ import java.util.Map;
 import java.util.function.Consumer;
 import com.caro.bizkit.domain.user.entity.User;
 import com.caro.bizkit.domain.user.repository.UserRepository;
-import com.caro.bizkit.domain.withdrawl.entity.AccountWithdrawal;
-import com.caro.bizkit.domain.withdrawl.entity.Withdrawal;
-import com.caro.bizkit.domain.withdrawl.repository.AccountWithdrawalRepository;
-import com.caro.bizkit.domain.withdrawl.repository.WithdrawalRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -32,15 +28,13 @@ public class UserService {
     private final S3Service s3Service;
     private final UserRepository userRepository;
     private final OAuthRepository oAuthRepository;
-    private final WithdrawalRepository withdrawalRepository;
-    private final AccountWithdrawalRepository accountWithdrawalRepository;
     private final KakaoOAuthClient kakaoOAuthClient;
     private final KakaoOAuthProperties kakaoOAuthProperties;
 
     public UserResponse getMyStatus(UserPrincipal user) {
         String profileImageUrl = null;
         if (user != null && StringUtils.hasText(user.profile_image_key())) {
-            profileImageUrl = s3Service.createReadUrl(user.profile_image_key()).url();
+            profileImageUrl = s3Service.getPublicUrl(user.profile_image_key());
         }
         return UserResponse.fromPrincipal(user, profileImageUrl);
     }
@@ -93,7 +87,7 @@ public class UserService {
     }
 
     @Transactional
-    public void withdraw(UserPrincipal principal, Integer reasonId) {
+    public void withdraw(UserPrincipal principal) {
         if (principal == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized user");
         }
@@ -101,17 +95,6 @@ public class UserService {
         User user = userRepository.findById(principal.id())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User not found"));
         Account account = user.getAccount();
-
-
-
-        Withdrawal withdrawal = withdrawalRepository.findById(reasonId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid reason id"));
-
-        AccountWithdrawal accountWithdrawal = AccountWithdrawal.create(account, withdrawal);
-        accountWithdrawalRepository.save(accountWithdrawal);
-
-
-
 
         oAuthRepository.findByAccount(account).ifPresent(oauth -> {
             unlinkFromKakaoIfNeeded(oauth);
@@ -136,7 +119,7 @@ public class UserService {
     private UserResponse toResponse(User user) {
         String profileImageUrl = null;
         if (StringUtils.hasText(user.getProfileImageKey())) {
-            profileImageUrl = s3Service.createReadUrl(user.getProfileImageKey()).url();
+            profileImageUrl = s3Service.getPublicUrl(user.getProfileImageKey());
         }
         return new UserResponse(
                 user.getId(),

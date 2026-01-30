@@ -26,10 +26,24 @@ public class CardService {
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
-    public List<CardResponse> getMyCards(UserPrincipal principal) {
-        return cardRepository.findAllByUserId(principal.id()).stream()
+    public List<CardResponse> getCardsByUserId(Integer userId) {
+        return cardRepository.findAllByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(userId).stream()
                 .map(CardResponse::from)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<CardResponse> getMyCards(UserPrincipal principal) {
+        return cardRepository.findAllByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(principal.id()).stream()
+                .map(CardResponse::from)
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public CardResponse getMyLatestCard(UserPrincipal principal) {
+        Card card = cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(principal.id())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Card not found"));
+        return CardResponse.from(card);
     }
 
     @Transactional

@@ -65,10 +65,9 @@ public class UserController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
     })
     public ResponseEntity<ApiResponse<Void>> withdraw(
-            @AuthenticationPrincipal UserPrincipal user,
-            @RequestParam Integer reasonId
+            @AuthenticationPrincipal UserPrincipal user
     ) {
-        userService.withdraw(user, reasonId);
+        userService.withdraw(user);
         return ResponseEntity.ok(ApiResponse.success("회원 탈퇴 성공", null));
     }
 

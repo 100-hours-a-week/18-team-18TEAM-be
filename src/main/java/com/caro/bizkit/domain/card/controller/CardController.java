@@ -17,6 +17,7 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -31,6 +32,18 @@ public class CardController {
 
     private final CardService cardService;
 
+    @GetMapping
+    @Operation(summary = "사용자 명함 목록 조회", description = "특정 사용자의 명함 목록을 조회합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
+    })
+    public ResponseEntity<ApiResponse<List<CardResponse>>> getCardsByUserId(
+            @RequestParam Integer userId
+    ) {
+        List<CardResponse> cards = cardService.getCardsByUserId(userId);
+        return ResponseEntity.ok(ApiResponse.success("사용자 명함 목록 조회 성공", cards));
+    }
+
     @GetMapping("/me")
     @Operation(summary = "내 명함 조회", description = "인증된 사용자의 명함 목록을 조회합니다.")
     @ApiResponses({
@@ -41,6 +54,18 @@ public class CardController {
     ) {
         List<CardResponse> cards = cardService.getMyCards(user);
         return ResponseEntity.ok(ApiResponse.success("내 명함 조회 성공", cards));
+    }
+
+    @GetMapping("/me/latest")
+    @Operation(summary = "내 최신 명함 조회", description = "인증된 사용자의 가장 최근에 등록한 명함을 조회합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
+    })
+    public ResponseEntity<ApiResponse<CardResponse>> getMyLatestCard(
+            @AuthenticationPrincipal UserPrincipal user
+    ) {
+        CardResponse card = cardService.getMyLatestCard(user);
+        return ResponseEntity.ok(ApiResponse.success("내 최신 명함 조회 성공", card));
     }
 
     @PostMapping("/me")
