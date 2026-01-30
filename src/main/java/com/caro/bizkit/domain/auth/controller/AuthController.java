@@ -1,17 +1,27 @@
 package com.caro.bizkit.domain.auth.controller;
 
 import com.caro.bizkit.domain.auth.dto.LoginRequest;
+import com.caro.bizkit.domain.auth.dto.TokenPair;
 import com.caro.bizkit.domain.auth.service.AuthService;
 import com.caro.bizkit.security.JwtProperties;
+import com.caro.bizkit.security.JwtTokenProvider;
+import com.caro.bizkit.security.RefreshTokenService;
+import io.jsonwebtoken.Claims;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import java.util.Arrays;
+
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,21 +40,27 @@ public class AuthController {
 
     private final AuthService authService;
     private final JwtProperties jwtProperties;
+    private final JwtTokenProvider jwtTokenProvider;
+    private final RefreshTokenService refreshTokenService;
     private final boolean cookieSecure;
 
     public AuthController(
             AuthService authService,
             JwtProperties jwtProperties,
+            JwtTokenProvider jwtTokenProvider,
+            RefreshTokenService refreshTokenService,
             @Value("${cookie.secure:true}") boolean cookieSecure
     ) {
         this.authService = authService;
         this.jwtProperties = jwtProperties;
+        this.jwtTokenProvider = jwtTokenProvider;
+        this.refreshTokenService = refreshTokenService;
         this.cookieSecure = cookieSecure;
     }
 
     @PostMapping("/login/{provider}")
     @Operation(summary = "로그인", description = "pathvariable로 소셜 서비스 회사명(kakao)를 받고 body로 " +
-            "소셜 로그인 코드를 받아 액세스 토큰을 HttpOnly 쿠키로 발급합니다.")
+            "소셜 로그인 코드를 받아 액세스 토큰과 리프레시 토큰을 HttpOnly 쿠키로 발급합니다.")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
@@ -57,9 +73,9 @@ public class AuthController {
             @Valid @RequestBody LoginRequest request,
             HttpServletResponse response
     ) {
-        String token = authService.login(provider, request.code(), request.redirectUri());
+        TokenPair tokenPair = authService.login(provider, request.code(), request.redirectUri());
 
-        ResponseCookie cookie = ResponseCookie.from("accessToken", token)
+        ResponseCookie accessCookie = ResponseCookie.from("accessToken", tokenPair.accessToken())
                 .httpOnly(true)
                 .secure(cookieSecure)
                 .sameSite("Lax")
@@ -67,8 +83,82 @@ public class AuthController {
                 .maxAge(jwtProperties.getAccessTokenValiditySeconds())
                 .build();
 
-        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+        ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", tokenPair.refreshToken())
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite("Lax")
+                .path("/api/auth/refresh")
+                .maxAge(refreshTokenService.getRefreshTokenValiditySeconds())
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/rotation")
+    @Operation(summary = "토큰 갱신", description = "RefreshToken을 사용하여 새로운 AccessToken과 RefreshToken을 발급합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "토큰 갱신 성공"
+            ),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "401",
+                    description = "유효하지 않은 RefreshToken"
+            )
+    })
+    public ResponseEntity<Void> refresh(
+            HttpServletRequest request,
+            HttpServletResponse response
+    ) {
+        String refreshToken = extractCookie(request, "refreshToken");
+        String accessToken = extractCookie(request, "accessToken");
+
+        if (refreshToken == null || accessToken == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        Integer userId;
+        try {
+            Claims claims = jwtTokenProvider.parseClaimsIgnoreExpiration(accessToken);
+            userId = Integer.valueOf(claims.getSubject());
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        TokenPair tokenPair = authService.refresh(userId, refreshToken);
+
+        ResponseCookie accessCookie = ResponseCookie.from("accessToken", tokenPair.accessToken())
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(jwtProperties.getAccessTokenValiditySeconds())
+                .build();
+
+        ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", tokenPair.refreshToken())
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite("Lax")
+                .path("/api/auth/rotation") //보내는 곳
+                .maxAge(refreshTokenService.getRefreshTokenValiditySeconds())
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+        return ResponseEntity.ok().build();
+    }
+
+    private String extractCookie(HttpServletRequest request, String name) {
+        if (request.getCookies() == null) {
+            return null;
+        }
+        return Arrays.stream(request.getCookies())
+                .filter(c -> name.equals(c.getName()))
+                .map(Cookie::getValue)
+                .findFirst()
+                .orElse(null);
     }
 
     @GetMapping("/kakao/callback")

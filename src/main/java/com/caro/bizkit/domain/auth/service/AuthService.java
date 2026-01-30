@@ -2,6 +2,7 @@ package com.caro.bizkit.domain.auth.service;
 
 import com.caro.bizkit.domain.auth.dto.KakaoTokenResponse;
 import com.caro.bizkit.domain.auth.dto.KakaoUserResponse;
+import com.caro.bizkit.domain.auth.dto.TokenPair;
 import com.caro.bizkit.domain.auth.entity.Account;
 import com.caro.bizkit.domain.auth.entity.OAuth;
 import com.caro.bizkit.domain.auth.repository.AccountRepository;
@@ -11,6 +12,7 @@ import com.caro.bizkit.domain.user.entity.User;
 import com.caro.bizkit.domain.user.repository.AiUsageRepository;
 import com.caro.bizkit.domain.user.repository.UserRepository;
 import com.caro.bizkit.security.JwtTokenProvider;
+import com.caro.bizkit.security.RefreshTokenService;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -33,10 +35,11 @@ public class AuthService {
     private final UserRepository userRepository;
     private final AiUsageRepository aiUsageRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    private final RefreshTokenService refreshTokenService;
 
 
     @Transactional
-    public String login(String provider, String code, String redirectUri) {
+    public TokenPair login(String provider, String code, String redirectUri) {
         if (!"kakao".equalsIgnoreCase(provider)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Unsupported provider: " + provider);
         }
@@ -66,12 +69,33 @@ public class AuthService {
         User user = userRepository.findByAccount(account)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User not found"));
 
-        String token = jwtTokenProvider.generateAccessToken(
+        String accessToken = jwtTokenProvider.generateAccessToken(
                 String.valueOf(user.getId()),
                 Map.of()
         );
+        String refreshToken = refreshTokenService.createRefreshToken(user.getId());
+
         log.info("logged in with {}", account.getLoginEmail());
-        return token;
+        return new TokenPair(accessToken, refreshToken);
+    }
+
+    @Transactional(readOnly = true)
+    public TokenPair refresh(Integer userId, String refreshToken) {
+        if (!refreshTokenService.validateRefreshToken(userId, refreshToken)) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
+
+        String newAccessToken = jwtTokenProvider.generateAccessToken(
+                String.valueOf(user.getId()),
+                Map.of()
+        );
+        String newRefreshToken = refreshTokenService.createRefreshToken(user.getId());
+
+        log.info("Token refreshed for user: {}", userId);
+        return new TokenPair(newAccessToken, newRefreshToken);
     }
 
     @Transactional
