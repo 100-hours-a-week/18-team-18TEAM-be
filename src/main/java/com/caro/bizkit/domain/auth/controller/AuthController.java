@@ -1,8 +1,10 @@
 package com.caro.bizkit.domain.auth.controller;
 
+import com.caro.bizkit.common.ApiResponse.ApiResponse;
 import com.caro.bizkit.domain.auth.dto.LoginRequest;
 import com.caro.bizkit.domain.auth.dto.TokenPair;
 import com.caro.bizkit.domain.auth.service.AuthService;
+import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.security.JwtProperties;
 import com.caro.bizkit.security.JwtTokenProvider;
 import com.caro.bizkit.security.RefreshTokenService;
@@ -24,6 +26,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -67,7 +70,7 @@ public class AuthController {
                     description = "로그인 성공"
             )
     })
-    public ResponseEntity<Void> login(
+    public ResponseEntity<?> login(
             @Parameter(description = "소셜 로그인 제공자", example = "kakao")
             @PathVariable String provider,
             @Valid @RequestBody LoginRequest request,
@@ -93,7 +96,7 @@ public class AuthController {
 
         response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok().body(ApiResponse.success("로그인 성공", null));
     }
 
     @PostMapping("/rotation")
@@ -108,7 +111,7 @@ public class AuthController {
                     description = "유효하지 않은 RefreshToken"
             )
     })
-    public ResponseEntity<Void> refresh(
+    public ResponseEntity<?> refresh(
             HttpServletRequest request,
             HttpServletResponse response
     ) {
@@ -147,7 +150,7 @@ public class AuthController {
 
         response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
-        return ResponseEntity.ok().build();
+        return ResponseEntity.ok().body(ApiResponse.success("리프레시 토큰 재발급 성공", null));
     }
 
     private String extractCookie(HttpServletRequest request, String name) {
@@ -159,6 +162,41 @@ public class AuthController {
                 .map(Cookie::getValue)
                 .findFirst()
                 .orElse(null);
+    }
+
+    @PostMapping("/logout")
+    @Operation(summary = "로그아웃", description = "RefreshToken을 삭제하고 쿠키를 무효화합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(
+                    responseCode = "200",
+                    description = "로그아웃 성공"
+            )
+    })
+    public ResponseEntity<?> logout(
+            @AuthenticationPrincipal UserPrincipal userPrincipal,
+            HttpServletResponse response
+    ) {
+        authService.logout(userPrincipal.id());
+
+        ResponseCookie accessCookie = ResponseCookie.from("accessToken", "")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite("Lax")
+                .path("/")
+                .maxAge(0)
+                .build();
+
+        ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite("Lax")
+                .path("/api/auth/rotation")
+                .maxAge(0)
+                .build();
+
+        response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+        return ResponseEntity.ok().body(ApiResponse.success("로그아웃 성공", null));
     }
 
     @GetMapping("/kakao/callback")

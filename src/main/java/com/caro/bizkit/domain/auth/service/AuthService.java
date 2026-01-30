@@ -98,6 +98,11 @@ public class AuthService {
         return new TokenPair(newAccessToken, newRefreshToken);
     }
 
+    public void logout(Integer userId) {
+        refreshTokenService.deleteRefreshToken(userId);
+        log.info("User logged out: {}", userId);
+    }
+
     @Transactional
     public Account signUpAccount(String provider, String providerId, String loginEmail, String nickname) {
         Account account = Account.create(loginEmail);
