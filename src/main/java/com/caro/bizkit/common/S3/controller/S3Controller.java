@@ -34,8 +34,8 @@ public class S3Controller {
             )
     })
     public ResponseEntity<PresignedUrlResponse> createUploadUrl(@RequestBody @Valid PresignedUploadRequest request) {
-        String key = s3Service.createObjectKey(request.category(), request.contentType());
-        PresignedUrlResponse response = s3Service.createUploadUrl(key, request.contentType());
+        String key = s3Service.createObjectKey(request.category(), request.originName());
+        PresignedUrlResponse response = s3Service.createUploadUrl(key);
         return ResponseEntity.ok(response);
     }
 
