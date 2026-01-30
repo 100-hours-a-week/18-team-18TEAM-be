@@ -53,8 +53,12 @@ jwt:
 cors:
   allowed-origins: ${CORS_ALLOWED_ORIGINS:}
 
+cookie:
+  secure: ${COOKIE_SECURE:}
+
 aws:
   s3:
     bucket: ${AWS_S3_BUCKET:}
     region: ${AWS_REGION:}
     presigned-url-expiration-seconds: ${AWS_S3_PRESIGNED_URL_EXPIRATION_SECONDS:300}
+    env-prefix: ${SPRING_PROFILES_ACTIVE}

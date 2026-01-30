@@ -34,6 +34,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -90,7 +91,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(cookieSecure)
                 .sameSite("Lax")
-                .path("/api/auth/refresh")
+                .path("/api/auth/rotation")
                 .maxAge(refreshTokenService.getRefreshTokenValiditySeconds())
                 .build();
 
@@ -119,16 +120,18 @@ public class AuthController {
         String accessToken = extractCookie(request, "accessToken");
 
         if (refreshToken == null || accessToken == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "토큰이 없습니다.");
         }
 
         Integer userId;
+
         try {
             Claims claims = jwtTokenProvider.parseClaimsIgnoreExpiration(accessToken);
             userId = Integer.valueOf(claims.getSubject());
         } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "액세스 토큰에 문제가 생겼습니다.");
         }
+
 
         TokenPair tokenPair = authService.refresh(userId, refreshToken);
 
@@ -166,12 +169,6 @@ public class AuthController {
 
     @PostMapping("/logout")
     @Operation(summary = "로그아웃", description = "RefreshToken을 삭제하고 쿠키를 무효화합니다.")
-    @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(
-                    responseCode = "200",
-                    description = "로그아웃 성공"
-            )
-    })
     public ResponseEntity<?> logout(
             @AuthenticationPrincipal UserPrincipal userPrincipal,
             HttpServletResponse response

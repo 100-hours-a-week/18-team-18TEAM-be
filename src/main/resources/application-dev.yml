@@ -1,6 +1,0 @@
-cookie:
-  secure: false
-
-aws:
-  s3:
-    env-prefix: dev

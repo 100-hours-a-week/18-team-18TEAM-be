@@ -43,7 +43,7 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/auth/login/**",
                                 "/api/auth/kakao/callback",
-                                "/api/auth/refresh",
+                                "/api/auth/rotation",
                                 "/error"
                         ).permitAll()
                         .requestMatchers("/actuator", "/actuator/**").permitAll()
