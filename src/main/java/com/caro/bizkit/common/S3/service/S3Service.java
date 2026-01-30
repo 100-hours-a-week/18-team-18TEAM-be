@@ -36,17 +36,15 @@ public class S3Service {
 
 
     public String createObjectKey(UploadCategory type, String originName) {
-        if (type == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "S3 upload category is required");
-        }
+        String envPrefix = s3Properties.getEnvPrefix();
         String cleanedPrefix = type.prefix();
         String datePath = LocalDate.now().toString().replace("-", "/");
         String extension = extractExtension(originName);
         String uuid = UUID.randomUUID().toString().replace("-", "");
         if (StringUtils.hasText(extension)) {
-            return cleanedPrefix + "/" + datePath + "/" + uuid + "." + extension;
+            return envPrefix + "/" + cleanedPrefix + "/" + datePath + "/" + uuid + "." + extension;
         }
-        String key = cleanedPrefix + "/" + datePath + "/" + uuid;
+        String key = envPrefix + "/" + cleanedPrefix + "/" + datePath + "/" + uuid;
         log.warn("No extension found in originName: {}", originName);
         return key;
     }

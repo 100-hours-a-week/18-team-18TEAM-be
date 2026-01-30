@@ -11,4 +11,5 @@ public class S3Properties {
     private String bucket;
     private String region;
     private long presignedUrlExpirationSeconds = 300;
+    private String envPrefix;
 }

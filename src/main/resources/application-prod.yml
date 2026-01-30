@@ -1,2 +1,6 @@
 cookie:
   secure: true
+
+aws:
+  s3:
+    env-prefix: prod
