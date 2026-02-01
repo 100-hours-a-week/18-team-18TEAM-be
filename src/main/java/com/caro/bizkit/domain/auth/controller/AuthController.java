@@ -47,19 +47,22 @@ public class AuthController {
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenService refreshTokenService;
     private final boolean cookieSecure;
+    private final String cookieSameSite;
 
     public AuthController(
             AuthService authService,
             JwtProperties jwtProperties,
             JwtTokenProvider jwtTokenProvider,
             RefreshTokenService refreshTokenService,
-            @Value("${cookie.secure:true}") boolean cookieSecure
+            @Value("${cookie.secure:true}") boolean cookieSecure,
+            @Value("${cookie.same-site:Lax}") String cookieSameSite
     ) {
         this.authService = authService;
         this.jwtProperties = jwtProperties;
         this.jwtTokenProvider = jwtTokenProvider;
         this.refreshTokenService = refreshTokenService;
         this.cookieSecure = cookieSecure;
+        this.cookieSameSite = cookieSameSite;
     }
 
     @PostMapping("/login/{provider}")
@@ -82,7 +85,7 @@ public class AuthController {
         ResponseCookie accessCookie = ResponseCookie.from("accessToken", tokenPair.accessToken())
                 .httpOnly(true)
                 .secure(cookieSecure)
-                .sameSite("Lax")
+                .sameSite(cookieSameSite)
                 .path("/")
                 .maxAge(jwtProperties.getAccessTokenValiditySeconds())
                 .build();
@@ -90,7 +93,7 @@ public class AuthController {
         ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", tokenPair.refreshToken())
                 .httpOnly(true)
                 .secure(cookieSecure)
-                .sameSite("Lax")
+                .sameSite(cookieSameSite)
                 .path("/api/auth/rotation")
                 .maxAge(refreshTokenService.getRefreshTokenValiditySeconds())
                 .build();
@@ -138,7 +141,7 @@ public class AuthController {
         ResponseCookie accessCookie = ResponseCookie.from("accessToken", tokenPair.accessToken())
                 .httpOnly(true)
                 .secure(cookieSecure)
-                .sameSite("Lax")
+                .sameSite(cookieSameSite)
                 .path("/")
                 .maxAge(jwtProperties.getAccessTokenValiditySeconds())
                 .build();
@@ -146,7 +149,7 @@ public class AuthController {
         ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", tokenPair.refreshToken())
                 .httpOnly(true)
                 .secure(cookieSecure)
-                .sameSite("Lax")
+                .sameSite(cookieSameSite)
                 .path("/api/auth/rotation") //보내는 곳
                 .maxAge(refreshTokenService.getRefreshTokenValiditySeconds())
                 .build();
@@ -178,7 +181,7 @@ public class AuthController {
         ResponseCookie accessCookie = ResponseCookie.from("accessToken", "")
                 .httpOnly(true)
                 .secure(cookieSecure)
-                .sameSite("Lax")
+                .sameSite(cookieSameSite)
                 .path("/")
                 .maxAge(0)
                 .build();
@@ -186,7 +189,7 @@ public class AuthController {
         ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", "")
                 .httpOnly(true)
                 .secure(cookieSecure)
-                .sameSite("Lax")
+                .sameSite(cookieSameSite)
                 .path("/api/auth/rotation")
                 .maxAge(0)
                 .build();

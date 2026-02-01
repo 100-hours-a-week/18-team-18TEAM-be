@@ -55,6 +55,7 @@ cors:
 
 cookie:
   secure: ${COOKIE_SECURE:}
+  same-site: ${COOKIE_SAME_SITE:Lax}
 
 aws:
   s3:
