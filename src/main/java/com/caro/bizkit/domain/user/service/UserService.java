@@ -76,9 +76,15 @@ public class UserService {
             s3Service.deleteObject(previousKey);
         }
 
-        if (!Objects.equals(oldCompany, user.getCompany()) ||
+        boolean hasJobInfo = StringUtils.hasText(user.getCompany()) &&
+                StringUtils.hasText(user.getPosition()) &&
+                StringUtils.hasText(user.getDepartment());
+
+        boolean jobInfoChanged = !Objects.equals(oldCompany, user.getCompany()) ||
                 !Objects.equals(oldDepartment, user.getDepartment()) ||
-                !Objects.equals(oldPosition, user.getPosition())) {
+                !Objects.equals(oldPosition, user.getPosition());
+
+        if (jobInfoChanged && hasJobInfo) {
             eventPublisher.publishEvent(new UserProfileUpdatedEvent(
                     user.getId(), "USER", LocalDateTime.now()
             ));
