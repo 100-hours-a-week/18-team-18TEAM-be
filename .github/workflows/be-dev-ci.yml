@@ -1,0 +1,55 @@
+name: CI - DEV (BE)
+
+on:
+  pull_request:
+    branches: [ "develop" ]
+
+concurrency:
+  group: be-dev-ci-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+env:
+  APP_NAME: "Bizkit-BE"
+  APP_STAGE: "dev"
+  JAVA_VERSION: "21"
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set Up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Set Up Gradle (cache)
+        uses: gradle/actions/setup-gradle@v4
+
+      # - name: Unit Test
+      #   run: ./gradlew --no-daemon test
+
+      - name: Build (bootJar)
+        run: ./gradlew --no-daemon clean bootJar -x test --build-cache
+
+      - name: Notify Discord on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          MESSAGE="BE Dev PR CI 실패
+          Repo: \`${{ github.repository }}\`
+          Branch: \`${{ github.head_ref || github.ref_name }}\`
+          Workflow: \`${{ github.workflow }}\`
+          Job: \`${{ github.job }}\`
+          Author: \`${{ github.actor }}\`
+          Stage: \`${APP_STAGE}\`
+          링크: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          JSON_MESSAGE=$(printf '%s\n' "$MESSAGE" | python3 -c 'import json,sys; print(json.dumps({"content": sys.stdin.read()}))')
+          curl -X POST -H "Content-Type: application/json" -d "$JSON_MESSAGE" "$DISCORD_WEBHOOK_URL"

@@ -1,0 +1,67 @@
+name: CI - Main PR (BE)
+
+on:
+  pull_request:
+    branches: ["main"]
+
+concurrency:
+  group: be-main-ci-${{ github.head_ref || github.ref }}
+  cancel-in-progress: true
+
+env:
+  APP_NAME: "BizKit-BE"
+  APP_STAGE: "prod"
+  JAVA_VERSION: "21"
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set Up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ env.JAVA_VERSION }}
+
+      - name: Set Up Gradle (cache)
+        uses: gradle/actions/setup-gradle@v4
+
+      # - name: Unit Test
+      #   run: ./gradlew --no-daemon test
+
+      # - name: Integration Test (optional)
+      #   shell: bash
+      #   run: |
+      #     set -euo pipefail
+      #
+      #     if ./gradlew -q tasks --all | grep -q "^integrationTest"; then
+      #       echo "[ci] integrationTest task found -> run integrationTest"
+      #       ./gradlew --no-daemon integrationTest --build-cache
+      #     else
+      #       echo "[ci] integrationTest task not found -> skip"
+      #     fi
+
+      - name: Build (bootJar)
+        run: ./gradlew --no-daemon clean bootJar -x test --build-cache
+
+      - name: Notify Discord on failure
+        if: failure() && github.event.pull_request.head.repo.fork == false
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          MESSAGE="BE Main PR CI 실패
+          Repo: \`${{ github.repository }}\`
+          Branch: \`${{ github.head_ref || github.ref_name }}\`
+          Workflow: \`${{ github.workflow }}\`
+          Job: \`${{ github.job }}\`
+          Author: \`${{ github.actor }}\`
+          Stage: \`${APP_STAGE}\`
+          링크: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          JSON_MESSAGE=$(printf '%s\n' "$MESSAGE" | python3 -c 'import json,sys; print(json.dumps({"content": sys.stdin.read()}))')
+          curl -X POST -H "Content-Type: application/json" -d "$JSON_MESSAGE" "$DISCORD_WEBHOOK_URL"

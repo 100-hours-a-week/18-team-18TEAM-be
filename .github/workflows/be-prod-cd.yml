@@ -1,0 +1,176 @@
+name: CD - PROD (BE)
+
+on:
+  push:
+    branches: ["main"]
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+
+concurrency:
+  group: be-prod-cd-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+
+    env:
+      APP_NAME: "BizKit-BE"
+      APP_STAGE: prod
+      HEALTH_URL: http://127.0.0.1:8080/actuator/health
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set Up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Set Up Node.js (for semantic-release)
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install release deps
+        run: npm install --no-audit --no-fund
+
+      - name: Semantic Release (prod)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: npx --no-install semantic-release
+
+      - name: Read version from gradle.properties
+        id: ver
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=$(grep -E '^version=' gradle.properties | cut -d'=' -f2 | tr -d '[:space:]')
+          if [[ -z "$VERSION" ]]; then
+            echo "version not found in gradle.properties" >&2
+            exit 1
+          fi
+          echo "value=$VERSION" >> "$GITHUB_OUTPUT"
+
+      # - name: Integration Test
+      #   shell: bash
+      #   run: |
+      #     set -euo pipefail
+      #     if ./gradlew -q tasks --all | grep -q "^integrationTest"; then
+      #       echo "[cd] integrationTest task found -> run integrationTest"
+      #       ./gradlew --no-daemon clean integrationTest --build-cache
+      #     else
+      #       echo "[cd] integrationTest task not found -> skip"
+      #     fi
+
+      - name: Build (Gradle)
+        shell: bash
+        run: |
+          set -euo pipefail
+          ./gradlew clean bootJar -x test
+
+      - name: Configure AWS Credentials (Access Key)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+
+      - name: Upload Release Artifact to S3 (BE)
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=${{ steps.ver.outputs.value }}
+          BUCKET="${{ secrets.S3_BUCKET }}"
+
+          JAR=$(ls -1 build/libs/*.jar | head -n 1)
+          if [[ -z "$JAR" ]]; then
+            echo "No jar found in build/libs" >&2
+            ls -al build/libs || true
+            exit 1
+          fi
+
+          RELEASE_KEY="${{ secrets.S3_PREFIX }}/${APP_STAGE}/releases/be/${VERSION}/bizkit-be-${VERSION}.jar"
+
+          aws s3 cp "$JAR" "s3://$BUCKET/$RELEASE_KEY" --cache-control no-cache
+
+          echo "BUCKET=$BUCKET" >> "$GITHUB_ENV"
+          echo "RELEASE_KEY=$RELEASE_KEY" >> "$GITHUB_ENV"
+
+      - name: Build CodeDeploy bundle (BE)
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=${{ steps.ver.outputs.value }}
+
+          rm -rf bundle && mkdir -p bundle/deploy bundle/codedeploy/be/hooks
+
+          cp codedeploy/be/appspec.yml bundle/appspec.yml
+          cp codedeploy/be/hooks/start.sh bundle/codedeploy/be/hooks/start.sh
+          cp codedeploy/be/hooks/stop.sh bundle/codedeploy/be/hooks/stop.sh
+          cp codedeploy/be/hooks/validate.sh bundle/codedeploy/be/hooks/validate.sh
+
+          cp deploy.sh bundle/deploy-be.sh
+
+          ARCHIVE_URL="$(aws s3 presign "s3://${BUCKET}/${RELEASE_KEY}" --expires-in 3600)"
+          ESCAPED_URL=$(printf "%s" "$ARCHIVE_URL" | sed "s/'/'\\\\''/g")
+
+          cat > bundle/codedeploy/be/env.sh <<EOF
+          RELEASE_ID='${VERSION}'
+          ARCHIVE_URL='${ESCAPED_URL}'
+          HEALTH_URL='${HEALTH_URL}'
+          EOF
+
+          (cd bundle && zip -r ../bundle.zip .)
+          unzip -l bundle.zip
+
+      - name: Upload bundle.zip to S3
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION=${{ steps.ver.outputs.value }}
+
+          BUNDLE_KEY="${{ secrets.S3_PREFIX }}/${APP_STAGE}/codedeploy/be/${VERSION}/bundle-${{ github.run_id }}.zip"
+          aws s3 cp bundle.zip "s3://$BUCKET/$BUNDLE_KEY"
+          echo "BUNDLE_KEY=$BUNDLE_KEY" >> "$GITHUB_ENV"
+
+      - name: Create CodeDeploy deployment & wait
+        shell: bash
+        run: |
+          set -euo pipefail
+          APP="${{ secrets.CODEDEPLOY_APP_BE_PROD }}"
+          DG="${{ secrets.CODEDEPLOY_DG_BE_PROD }}"
+
+          DEPLOY_ID="$(aws deploy create-deployment \
+            --application-name "$APP" \
+            --deployment-group-name "$DG" \
+            --s3-location bucket="$BUCKET",key="$BUNDLE_KEY",bundleType=zip \
+            --file-exists-behavior OVERWRITE \
+            --query "deploymentId" --output text)"
+
+          echo "deploymentId=$DEPLOY_ID"
+          aws deploy wait deployment-successful --deployment-id "$DEPLOY_ID"
+          echo "CodeDeploy SUCCESS"
+
+      - name: Notify Discord on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          MESSAGE="BE PROD CD 실패
+          Repo: \`${{ github.repository }}\`
+          Branch: \`${{ github.ref_name }}\`
+          Version: \`${{ steps.ver.outputs.value }}\`
+          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          JSON_MESSAGE=$(printf '%s\n' "$MESSAGE" | python3 -c 'import json,sys; print(json.dumps({"content": sys.stdin.read()}))')
+          curl -X POST -H "Content-Type: application/json" -d "$JSON_MESSAGE" "$DISCORD_WEBHOOK_URL"
