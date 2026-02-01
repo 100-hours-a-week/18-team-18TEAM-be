@@ -44,6 +44,18 @@ public class CardController {
         return ResponseEntity.ok(ApiResponse.success("사용자 명함 목록 조회 성공", cards));
     }
 
+    @GetMapping("/{card_id}")
+    @Operation(summary = "명함 단일 조회", description = "명함 ID로 명함을 조회합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
+    })
+    public ResponseEntity<ApiResponse<CardResponse>> getCardById(
+            @PathVariable("card_id") Integer cardId
+    ) {
+        CardResponse card = cardService.getCardById(cardId);
+        return ResponseEntity.ok(ApiResponse.success("명함 조회 성공", card));
+    }
+
     @GetMapping("/me")
     @Operation(summary = "내 명함 조회", description = "인증된 사용자의 명함 목록을 조회합니다.")
     @ApiResponses({

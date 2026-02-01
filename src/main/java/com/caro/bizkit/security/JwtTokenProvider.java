@@ -62,6 +62,14 @@ public class JwtTokenProvider {
         }
     }
 
+    public Claims parseClaimsIgnoreExpiration(String token) {
+        try {
+            return parseClaims(token);
+        } catch (io.jsonwebtoken.ExpiredJwtException e) {
+            return e.getClaims();
+        }
+    }
+
     private SecretKey initializeKey(String secret) {
         if (!StringUtils.hasText(secret)) {
             throw new IllegalStateException("JWT secret must be configured");

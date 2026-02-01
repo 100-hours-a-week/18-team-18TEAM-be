@@ -5,19 +5,18 @@ on:
     branches: ["main"]
 
 concurrency:
-  group: be-main-pr-${{ github.head_ref || github.ref }}
+  group: be-main-ci-${{ github.head_ref || github.ref }}
   cancel-in-progress: true
 
 env:
   APP_NAME: "BizKit-BE"
   APP_STAGE: "prod"
   JAVA_VERSION: "21"
-  S3_PREFIX: "artifacts"
 
 jobs:
-  setup:
+  build:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 15
 
     steps:
       - name: Checkout
@@ -29,96 +28,29 @@ jobs:
           distribution: temurin
           java-version: ${{ env.JAVA_VERSION }}
 
-      - name: Setup Gradle (cache)
+      - name: Set Up Gradle (cache)
         uses: gradle/actions/setup-gradle@v4
 
-      - name: Extract Version from PR
-        id: ver
-        shell: bash
-        run: |
-          set -euo pipefail
-          BODY="${{ github.event.pull_request.body }}"
+      # - name: Unit Test
+      #   run: ./gradlew --no-daemon test
 
-          VERSION="$(echo "$BODY" | sed -nE 's/.*Release[[:space:]]*:[[:space:]]*([A-Za-z0-9._-]+).*/\1/ip' | head -n1 || true)"
-          VERSION="$(echo "$VERSION" | tr -cd 'A-Za-z0-9._-')"
-
-          if [[ -z "$VERSION" ]]; then
-            echo "PR body must include: Release: <version> (ex: Release: v0.1.1)" >&2
-            exit 1
-          fi
-
-          echo "VERSION=$VERSION" >> "$GITHUB_ENV"
-          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
-
-      # - name: Test (integration) + Coverage + Build (bootJar)
+      # - name: Integration Test (optional)
       #   shell: bash
       #   run: |
       #     set -euo pipefail
-
-          # integrationTest task가 있으면 그걸 포함해서 돌림
+      #
       #     if ./gradlew -q tasks --all | grep -q "^integrationTest"; then
-      #       echo "[ci] integrationTest task found -> run integrationTest + jacoco + bootJar"
-      #       ./gradlew --no-daemon clean test integrationTest jacocoTestReport bootJar --build-cache
+      #       echo "[ci] integrationTest task found -> run integrationTest"
+      #       ./gradlew --no-daemon integrationTest --build-cache
       #     else
-      #       echo "[ci] integrationTest task not found -> run test + jacoco + bootJar (ensure tests include integration as needed)"
-      #       ./gradlew --no-daemon clean test jacocoTestReport bootJar --build-cache
+      #       echo "[ci] integrationTest task not found -> skip"
       #     fi
 
-      - name: Configure AWS Credentials (Access Key)
-        if: ${{ github.event.pull_request.head.repo.fork == false }}
-        uses: aws-actions/configure-aws-credentials@v4
-        with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
-          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
-
-      - name: Upload Build Artifact to S3
-        if: ${{ github.event.pull_request.head.repo.fork == false }}
-        shell: bash
-        run: |
-          set -euo pipefail
-
-          BUCKET="${{ secrets.S3_BUCKET }}"
-
-          JAR_PATH="$(ls -1 build/libs/*.jar | grep -v plain | head -n1)"
-          if [[ -z "$JAR_PATH" ]]; then
-            echo "No jar found in build/libs" >&2
-            ls -al build/libs || true
-            exit 1
-          fi
-
-          OUT_JAR="bizkit-be-${VERSION}.jar"
-          cp "$JAR_PATH" "$OUT_JAR"
-
-          SHORT_SHA="${{ github.event.pull_request.head.sha }}"
-          SHORT_SHA="${SHORT_SHA:0:7}"
-
-          S3_KEY_BASE="${S3_PREFIX}/${APP_STAGE}/premerge/${VERSION}/${SHORT_SHA}"
-          JAR_KEY="${S3_KEY_BASE}/${OUT_JAR}"
-          MANIFEST_KEY="${S3_KEY_BASE}/manifest.json"
-
-          PR_NO="${{ github.event.pull_request.number }}"
-
-          if aws s3api head-object --bucket "$BUCKET" --key "$JAR_KEY" >/dev/null 2>&1; then
-            echo "S3 already has $JAR_KEY -> skip upload"
-            exit 0
-          fi
-
-          cat > manifest.json <<EOF
-          {
-            "component": "backend",
-            "stage": "${APP_STAGE}",
-            "version": "${VERSION}",
-            "prNumber": ${PR_NO},
-            "commit": "${{ github.event.pull_request.head.sha }}"
-          }
-          EOF
-
-          aws s3 cp "$OUT_JAR" "s3://$BUCKET/$JAR_KEY"
-          aws s3 cp "manifest.json" "s3://$BUCKET/$MANIFEST_KEY"
+      - name: Build (bootJar)
+        run: ./gradlew --no-daemon clean bootJar -x test --build-cache
 
       - name: Notify Discord on failure
-        if: failure()
+        if: failure() && github.event.pull_request.head.repo.fork == false
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
@@ -129,9 +61,7 @@ jobs:
           Job: \`${{ github.job }}\`
           Author: \`${{ github.actor }}\`
           Stage: \`${APP_STAGE}\`
-          Version: \`${VERSION}\`
           링크: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
           JSON_MESSAGE=$(printf '%s\n' "$MESSAGE" | python3 -c 'import json,sys; print(json.dumps({"content": sys.stdin.read()}))')
           curl -X POST -H "Content-Type: application/json" -d "$JSON_MESSAGE" "$DISCORD_WEBHOOK_URL"
-

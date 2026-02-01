@@ -1,9 +1,8 @@
 package com.caro.bizkit.domain.card.dto;
 
 import com.caro.bizkit.domain.card.entity.Card;
-import java.time.LocalDate;
 
-public record CardResponse(
+public record WalletResponse(
         Integer id,
         Integer user_id,
         String uuid,
@@ -14,13 +13,10 @@ public record CardResponse(
         String company,
         String position,
         String department,
-        LocalDate start_date,
-        LocalDate end_date,
-        Boolean is_progress,
         String ai_image_key
 ) {
-    public static CardResponse from(Card card) {
-        return new CardResponse(
+    public static WalletResponse from(Card card) {
+        return new WalletResponse(
                 card.getId(),
                 card.getUser() != null ? card.getUser().getId() : null,
                 card.getUuid(),
@@ -31,9 +27,6 @@ public record CardResponse(
                 card.getCompany(),
                 card.getPosition(),
                 card.getDepartment(),
-                card.getStartDate(),
-                card.getEndDate(),
-                card.getIsProgress(),
                 card.getAiImageKey()
         );
     }
