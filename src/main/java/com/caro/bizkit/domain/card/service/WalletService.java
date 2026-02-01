@@ -1,8 +1,8 @@
 package com.caro.bizkit.domain.card.service;
 
 import com.caro.bizkit.domain.card.dto.CardCollectRequest;
-import com.caro.bizkit.domain.card.dto.CardResponse;
 import com.caro.bizkit.domain.card.dto.CollectedCardsResult;
+import com.caro.bizkit.domain.card.dto.WalletResponse;
 import com.caro.bizkit.domain.card.entity.Card;
 import com.caro.bizkit.domain.card.entity.UserCard;
 import com.caro.bizkit.domain.card.repository.CardRepository;
@@ -28,7 +28,7 @@ public class WalletService {
     private final UserRepository userRepository;
 
     @Transactional()
-    public CardResponse collectCard(UserPrincipal principal, CardCollectRequest request) {
+    public WalletResponse collectCard(UserPrincipal principal, CardCollectRequest request) {
         Card card = cardRepository.findByUuid(request.uuid())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Card not found"));
         if (card.getUser() != null && card.getUser().getId().equals(principal.id())) {
@@ -43,7 +43,7 @@ public class WalletService {
         User user = userRepository.getReferenceById(principal.id());
         UserCard userCard = UserCard.create(user, card);
         userCardRepository.save(userCard);
-        return CardResponse.from(card);
+        return WalletResponse.from(card);
     }
     @Transactional(readOnly = true)
     public CollectedCardsResult getCollectedCards(
@@ -59,9 +59,9 @@ public class WalletService {
             userCards = userCards.subList(0, limit);
         }
         Integer nextCursorId = userCards.isEmpty() ? null : userCards.getLast().getId();
-        List<CardResponse> cards = userCards.stream()
+        List<WalletResponse> cards = userCards.stream()
                 .map(UserCard::getCard)
-                .map(CardResponse::from)
+                .map(WalletResponse::from)
                 .toList();
         return new CollectedCardsResult(cards, nextCursorId, hasNext);
     }

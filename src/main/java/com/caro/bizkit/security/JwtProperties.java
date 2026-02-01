@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 public class JwtProperties {
     private String secret;
     private long accessTokenValiditySeconds;
+    private long refreshTokenValiditySeconds = 604800; // 7일
 
     public String getSecret() {
         return secret;
@@ -23,5 +24,13 @@ public class JwtProperties {
 
     public void setAccessTokenValiditySeconds(long accessTokenValiditySeconds) {
         this.accessTokenValiditySeconds = accessTokenValiditySeconds;
+    }
+
+    public long getRefreshTokenValiditySeconds() {
+        return refreshTokenValiditySeconds;
+    }
+
+    public void setRefreshTokenValiditySeconds(long refreshTokenValiditySeconds) {
+        this.refreshTokenValiditySeconds = refreshTokenValiditySeconds;
     }
 }

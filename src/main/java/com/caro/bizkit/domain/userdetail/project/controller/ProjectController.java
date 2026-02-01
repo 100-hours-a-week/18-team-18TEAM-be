@@ -1,7 +1,6 @@
 package com.caro.bizkit.domain.userdetail.project.controller;
 
 import com.caro.bizkit.common.ApiResponse.ApiResponse;
-import com.caro.bizkit.domain.auth.dto.AccessTokenResponse;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.userdetail.project.dto.ProjectRequest;
 import com.caro.bizkit.domain.userdetail.project.dto.ProjectResponse;

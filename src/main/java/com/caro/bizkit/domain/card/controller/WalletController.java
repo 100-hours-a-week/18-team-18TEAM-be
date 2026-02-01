@@ -3,8 +3,8 @@ package com.caro.bizkit.domain.card.controller;
 import com.caro.bizkit.common.ApiResponse.ApiResponse;
 import com.caro.bizkit.common.ApiResponse.Pagination;
 import com.caro.bizkit.domain.card.dto.CardCollectRequest;
-import com.caro.bizkit.domain.card.dto.CardResponse;
 import com.caro.bizkit.domain.card.dto.CollectedCardsResult;
+import com.caro.bizkit.domain.card.dto.WalletResponse;
 import com.caro.bizkit.domain.card.service.WalletService;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
@@ -37,11 +37,11 @@ public class WalletController {
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
     })
-    public ResponseEntity<ApiResponse<CardResponse>> collectCard(
+    public ResponseEntity<ApiResponse<WalletResponse>> collectCard(
             @AuthenticationPrincipal UserPrincipal user,
             @Valid @RequestBody CardCollectRequest request
     ) {
-        CardResponse card = walletService.collectCard(user, request);
+        WalletResponse card = walletService.collectCard(user, request);
         return ResponseEntity.ok(ApiResponse.success("명함 수집 성공", card));
     }
 
@@ -50,7 +50,7 @@ public class WalletController {
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
     })
-    public ResponseEntity<ApiResponse<List<CardResponse>>> getCollectedCards(
+    public ResponseEntity<ApiResponse<List<WalletResponse>>> getCollectedCards(
             @AuthenticationPrincipal UserPrincipal user,
             @RequestParam(defaultValue = "20") Integer size,
             @RequestParam(required = false) Integer cursorId,
