@@ -5,6 +5,7 @@ import java.time.LocalDate;
 
 public record CardResponse(
         Integer id,
+        Integer user_id,
         String uuid,
         String name,
         String email,
@@ -21,6 +22,7 @@ public record CardResponse(
     public static CardResponse from(Card card) {
         return new CardResponse(
                 card.getId(),
+                card.getUser() != null ? card.getUser().getId() : null,
                 card.getUuid(),
                 card.getName(),
                 card.getEmail(),
