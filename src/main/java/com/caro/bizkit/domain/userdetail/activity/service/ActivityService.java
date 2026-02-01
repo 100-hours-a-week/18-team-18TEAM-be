@@ -1,17 +1,20 @@
 package com.caro.bizkit.domain.userdetail.activity.service;
 
+import com.caro.bizkit.domain.ai.event.UserProfileUpdatedEvent;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.user.entity.User;
 import com.caro.bizkit.domain.user.repository.UserRepository;
 import com.caro.bizkit.domain.userdetail.activity.dto.ActivityRequest;
 import com.caro.bizkit.domain.userdetail.activity.dto.ActivityResponse;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.function.Consumer;
 import com.caro.bizkit.domain.userdetail.activity.entity.Activity;
 import com.caro.bizkit.domain.userdetail.activity.repository.ActivityRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -24,6 +27,7 @@ public class ActivityService {
 
     private final ActivityRepository activityRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public List<ActivityResponse> getMyActivities(UserPrincipal principal) {
@@ -51,6 +55,11 @@ public class ActivityService {
                 request.win_date()
         );
         Activity saved = activityRepository.save(activity);
+
+        eventPublisher.publishEvent(new UserProfileUpdatedEvent(
+                principal.id(), "ACTIVITY", LocalDateTime.now()
+        ));
+
         return ActivityResponse.from(saved);
     }
 
@@ -69,6 +78,11 @@ public class ActivityService {
         }
 
         applyUpdates(activity, request);
+
+        eventPublisher.publishEvent(new UserProfileUpdatedEvent(
+                principal.id(), "ACTIVITY", LocalDateTime.now()
+        ));
+
         return ActivityResponse.from(activity);
     }
 
@@ -103,5 +117,9 @@ public class ActivityService {
         Activity activity = activityRepository.findById(activityId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Activity not found"));
         activityRepository.delete(activity);
+
+        eventPublisher.publishEvent(new UserProfileUpdatedEvent(
+                principal.id(), "ACTIVITY", LocalDateTime.now()
+        ));
     }
 }

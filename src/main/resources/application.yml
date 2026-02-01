@@ -63,3 +63,8 @@ aws:
     region: ${AWS_REGION:}
     presigned-url-expiration-seconds: ${AWS_S3_PRESIGNED_URL_EXPIRATION_SECONDS:300}
     env-prefix: ${SPRING_PROFILES_ACTIVE}
+
+ai:
+  client:
+    base-url: ${AI_SERVER_URL:http://localhost:8000}
+    timeout-seconds: ${AI_TIMEOUT_SECONDS:60}

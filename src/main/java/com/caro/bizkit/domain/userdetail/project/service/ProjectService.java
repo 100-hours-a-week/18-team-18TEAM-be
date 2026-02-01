@@ -1,17 +1,20 @@
 package com.caro.bizkit.domain.userdetail.project.service;
 
+import com.caro.bizkit.domain.ai.event.UserProfileUpdatedEvent;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.user.entity.User;
 import com.caro.bizkit.domain.user.repository.UserRepository;
 import com.caro.bizkit.domain.userdetail.project.dto.ProjectRequest;
 import com.caro.bizkit.domain.userdetail.project.dto.ProjectResponse;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.function.Consumer;
 import com.caro.bizkit.domain.userdetail.project.entity.Project;
 import com.caro.bizkit.domain.userdetail.project.repository.ProjectRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -24,6 +27,7 @@ public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public List<ProjectResponse> getMyProjects(UserPrincipal principal) {
@@ -50,6 +54,11 @@ public class ProjectService {
                 request.end_date()
         );
         Project saved = projectRepository.save(project);
+
+        eventPublisher.publishEvent(new UserProfileUpdatedEvent(
+                principal.id(), "PROJECT", LocalDateTime.now()
+        ));
+
         return ProjectResponse.from(saved);
     }
 
@@ -68,6 +77,11 @@ public class ProjectService {
         }
 
         applyUpdates(project, request);
+
+        eventPublisher.publishEvent(new UserProfileUpdatedEvent(
+                principal.id(), "PROJECT", LocalDateTime.now()
+        ));
+
         return ProjectResponse.from(project);
     }
 
@@ -115,5 +129,9 @@ public class ProjectService {
         Project project = projectRepository.findById(projectId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
         projectRepository.delete(project);
+
+        eventPublisher.publishEvent(new UserProfileUpdatedEvent(
+                principal.id(), "PROJECT", LocalDateTime.now()
+        ));
     }
 }
