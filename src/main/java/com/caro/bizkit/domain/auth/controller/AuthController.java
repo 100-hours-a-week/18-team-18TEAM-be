@@ -63,6 +63,7 @@ public class AuthController {
         this.refreshTokenService = refreshTokenService;
         this.cookieSecure = cookieSecure;
         this.cookieSameSite = cookieSameSite;
+        log.info("Cookie options - secure: {}, sameSite: {}", cookieSecure, cookieSameSite);
     }
 
     @PostMapping("/login/{provider}")
