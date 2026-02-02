@@ -21,6 +21,8 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler;
 import org.springframework.dao.DataIntegrityViolationException;
 
+import jakarta.validation.ConstraintViolationException;
+
 import java.time.format.DateTimeParseException;
 import java.util.stream.Collectors;
 
@@ -124,6 +126,18 @@ public class GlobalApiExceptionHandler extends ResponseEntityExceptionHandler {
     public ResponseEntity<ApiResponse<String>> handleClassCast(ClassCastException ex) {
         String message = "요청 데이터 타입이 올바르지 않습니다.";
         log.warn("Type Cast Error: {} | Status: {} | at {}", ex.getMessage(), HttpStatus.BAD_REQUEST.value(), ex.getStackTrace()[0]);
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.failed(HttpStatus.BAD_REQUEST, message));
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<String>> handleConstraintViolation(ConstraintViolationException ex) {
+        String message = ex.getConstraintViolations().stream()
+                .map(v -> v.getMessage())
+                .collect(Collectors.joining(", "));
+        log.warn("Constraint Violation Error: {} | Status: {} | at {}", message, HttpStatus.BAD_REQUEST.value(), ex.getStackTrace()[0]);
 
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)

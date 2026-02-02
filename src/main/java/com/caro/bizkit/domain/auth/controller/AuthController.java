@@ -87,7 +87,7 @@ public class AuthController {
                 .secure(cookieSecure)
                 .sameSite(cookieSameSite)
                 .path("/")
-                .maxAge(jwtProperties.getAccessTokenValiditySeconds()*2)
+                .maxAge(jwtProperties.getAccessTokenValiditySeconds())
                 .build();
 
         ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", tokenPair.refreshToken())
