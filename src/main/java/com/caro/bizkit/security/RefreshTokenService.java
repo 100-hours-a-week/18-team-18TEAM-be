@@ -13,39 +13,57 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class RefreshTokenService {
 
-    private static final String KEY_PREFIX = "refresh_token:";
+    private static final String USER_KEY_PREFIX = "refresh_token:user:";
+    private static final String LOOKUP_KEY_PREFIX = "refresh_token:lookup:";
 
     private final StringRedisTemplate redisTemplate;
     private final JwtProperties jwtProperties;
 
     public String createRefreshToken(Integer userId) {
+        deleteRefreshToken(userId);
+
         String refreshToken = UUID.randomUUID().toString();
         String hashedToken = hashToken(refreshToken);
-        String key = KEY_PREFIX + userId;
+        long ttl = jwtProperties.getRefreshTokenValiditySeconds();
 
-        redisTemplate.opsForValue().set(
-                key,
-                hashedToken,
-                jwtProperties.getRefreshTokenValiditySeconds(),
-                TimeUnit.SECONDS
-        );
+        String userKey = USER_KEY_PREFIX + userId;
+        redisTemplate.opsForValue().set(userKey, hashedToken, ttl, TimeUnit.SECONDS);
+
+        String lookupKey = LOOKUP_KEY_PREFIX + hashedToken;
+        redisTemplate.opsForValue().set(lookupKey, String.valueOf(userId), ttl, TimeUnit.SECONDS);
 
         return refreshToken;
     }
 
-    public boolean validateRefreshToken(Integer userId, String refreshToken) {
-        String key = KEY_PREFIX + userId;
-        String storedHash = redisTemplate.opsForValue().get(key);
-        if (storedHash == null) {
-            return false;
-        }
+    public Integer validateAndGetUserId(String refreshToken) {
         String hashedToken = hashToken(refreshToken);
-        return storedHash.equals(hashedToken);
+        String lookupKey = LOOKUP_KEY_PREFIX + hashedToken;
+        String userIdStr = redisTemplate.opsForValue().get(lookupKey);
+
+        if (userIdStr == null) {
+            return null;
+        }
+
+        Integer userId = Integer.valueOf(userIdStr);
+        String userKey = USER_KEY_PREFIX + userId;
+        String storedHash = redisTemplate.opsForValue().get(userKey);
+
+        if (storedHash == null || !storedHash.equals(hashedToken)) {
+            return null;
+        }
+
+        return userId;
     }
 
     public void deleteRefreshToken(Integer userId) {
-        String key = KEY_PREFIX + userId;
-        redisTemplate.delete(key);
+        String userKey = USER_KEY_PREFIX + userId;
+        String storedHash = redisTemplate.opsForValue().get(userKey);
+
+        if (storedHash != null) {
+            String lookupKey = LOOKUP_KEY_PREFIX + storedHash;
+            redisTemplate.delete(lookupKey);
+        }
+        redisTemplate.delete(userKey);
     }
 
     public long getRefreshTokenValiditySeconds() {
