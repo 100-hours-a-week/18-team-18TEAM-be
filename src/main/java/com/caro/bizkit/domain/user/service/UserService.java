@@ -111,9 +111,6 @@ public class UserService {
 
     @Transactional
     public void withdraw(UserPrincipal principal) {
-        if (principal == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Unauthorized user");
-        }
 
         User user = userRepository.findById(principal.id())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User not found"));
