@@ -113,9 +113,14 @@ public class CardService {
 
         if (request.containsKey("end_date")) {
             Object value = request.get("end_date");
-            LocalDate endDate = value instanceof LocalDate ? (LocalDate) value : LocalDate.parse((String) value);
-            card.updateEndDate(endDate);
-            card.updateIsProgress(Boolean.FALSE);
+            if (value == null) {
+                card.updateEndDate(null);
+                card.updateIsProgress(Boolean.TRUE);
+            } else {
+                LocalDate endDate = value instanceof LocalDate ? (LocalDate) value : LocalDate.parse((String) value);
+                card.updateEndDate(endDate);
+                card.updateIsProgress(Boolean.FALSE);
+            }
         }
     }
 

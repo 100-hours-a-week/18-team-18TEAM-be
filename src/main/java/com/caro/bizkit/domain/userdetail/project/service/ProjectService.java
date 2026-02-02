@@ -100,9 +100,14 @@ public class ProjectService {
 
         if (request.containsKey("end_date")) {
             Object value = request.get("end_date");
-            LocalDate endDate = value instanceof LocalDate ? (LocalDate) value : LocalDate.parse((String) value);
-            project.updateEndDate(endDate);
-            project.updateIsProgress(Boolean.FALSE);
+            if (value == null) {
+                project.updateEndDate(null);
+                project.updateIsProgress(Boolean.TRUE);
+            } else {
+                LocalDate endDate = value instanceof LocalDate ? (LocalDate) value : LocalDate.parse((String) value);
+                project.updateEndDate(endDate);
+                project.updateIsProgress(Boolean.FALSE);
+            }
         }
     }
 
