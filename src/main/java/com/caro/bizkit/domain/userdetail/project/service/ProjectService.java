@@ -8,6 +8,7 @@ import com.caro.bizkit.domain.userdetail.project.dto.ProjectRequest;
 import com.caro.bizkit.domain.userdetail.project.dto.ProjectResponse;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.util.Map;
 import java.util.function.Consumer;
 import com.caro.bizkit.domain.userdetail.project.entity.Project;
@@ -104,7 +105,7 @@ public class ProjectService {
                 project.updateEndDate(null);
                 project.updateIsProgress(Boolean.TRUE);
             } else {
-                LocalDate endDate = value instanceof LocalDate ? (LocalDate) value : LocalDate.parse((String) value);
+                LocalDate endDate = value instanceof LocalDate ? (LocalDate) value : parseDate((String) value);
                 project.updateEndDate(endDate);
                 project.updateIsProgress(Boolean.FALSE);
             }
@@ -123,9 +124,16 @@ public class ProjectService {
             if (value instanceof LocalDate) {
                 updater.accept((LocalDate) value);
             } else if (value instanceof String) {
-                updater.accept(LocalDate.parse((String) value));
+                updater.accept(parseDate((String) value));
             }
         }
+    }
+
+    private LocalDate parseDate(String value) {
+        if (value.matches("\\d{4}-\\d{2}")) {
+            return YearMonth.parse(value).atDay(1);
+        }
+        return LocalDate.parse(value);
     }
 
     @Transactional

@@ -3,6 +3,7 @@ package com.caro.bizkit.domain.card.service;
 import com.caro.bizkit.domain.card.dto.CardRequest;
 import com.caro.bizkit.domain.card.dto.CardResponse;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.util.Map;
 import java.util.function.Consumer;
 import com.caro.bizkit.domain.card.entity.Card;
@@ -117,7 +118,7 @@ public class CardService {
                 card.updateEndDate(null);
                 card.updateIsProgress(Boolean.TRUE);
             } else {
-                LocalDate endDate = value instanceof LocalDate ? (LocalDate) value : LocalDate.parse((String) value);
+                LocalDate endDate = value instanceof LocalDate ? (LocalDate) value : parseDate((String) value);
                 card.updateEndDate(endDate);
                 card.updateIsProgress(Boolean.FALSE);
             }
@@ -136,9 +137,16 @@ public class CardService {
             if (value instanceof LocalDate) {
                 updater.accept((LocalDate) value);
             } else if (value instanceof String) {
-                updater.accept(LocalDate.parse((String) value));
+                updater.accept(parseDate((String) value));
             }
         }
+    }
+
+    private LocalDate parseDate(String value) {
+        if (value.matches("\\d{4}-\\d{2}")) {
+            return YearMonth.parse(value).atDay(1);
+        }
+        return LocalDate.parse(value);
     }
 
     @Transactional
