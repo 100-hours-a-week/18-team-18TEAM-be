@@ -25,13 +25,13 @@ public class User extends BaseTimeEntity {
     @JoinColumn(name = "account_id", nullable = false)
     private Account account;
 
-    @Column(length = 30, nullable = false)
+    @Column(length = 100, nullable = false)
     private String name;
 
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(length = 15)
+    @Column(length = 100)
     private String phoneNumber;
 
     @Column(length = 15)
