@@ -41,6 +41,13 @@ public class CardService {
     }
 
     @Transactional(readOnly = true)
+    public CardResponse getCardByUuid(String uuid) {
+        Card card = cardRepository.findByUuid(uuid)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Card not found"));
+        return CardResponse.from(card);
+    }
+
+    @Transactional(readOnly = true)
     public List<CardResponse> getMyCards(UserPrincipal principal) {
         return cardRepository.findAllByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(principal.id()).stream()
                 .map(CardResponse::from)
