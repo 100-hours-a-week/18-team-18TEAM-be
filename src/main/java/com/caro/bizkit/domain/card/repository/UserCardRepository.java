@@ -21,7 +21,7 @@ public interface UserCardRepository extends BaseRepository<UserCard, Integer> {
             where uc.user_id = :userId
               and (:cursorId is null or uc.id < :cursorId)
               and match(c.name, c.company, c.email, c.position, c.phone_number, c.department)
-                  against (:keyword in natural language mode)
+                  against (:keyword in boolean mode)
             order by uc.created_at desc, uc.id desc
             """, nativeQuery = true)
     List<UserCard> searchCollectedCards(
