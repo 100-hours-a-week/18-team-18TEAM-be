@@ -94,7 +94,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(cookieSecure)
                 .sameSite(cookieSameSite)
-                .path("/")
+                .path("/api/auth/rotation")
                 .maxAge(refreshTokenService.getRefreshTokenValiditySeconds())
                 .build();
 
