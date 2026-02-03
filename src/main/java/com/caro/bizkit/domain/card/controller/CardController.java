@@ -56,6 +56,18 @@ public class CardController {
         return ResponseEntity.ok(ApiResponse.success("명함 조회 성공", card));
     }
 
+    @GetMapping("/uuid/{uuid}")
+    @Operation(summary = "UUID로 명함 조회", description = "UUID로 명함을 조회합니다. 인증 없이 접근 가능합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
+    })
+    public ResponseEntity<ApiResponse<CardResponse>> getCardByUuid(
+            @PathVariable("uuid") String uuid
+    ) {
+        CardResponse card = cardService.getCardByUuid(uuid);
+        return ResponseEntity.ok(ApiResponse.success("명함 조회 성공", card));
+    }
+
     @GetMapping("/me")
     @Operation(summary = "내 명함 조회", description = "인증된 사용자의 명함 목록을 조회합니다.")
     @ApiResponses({
