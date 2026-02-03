@@ -7,10 +7,11 @@ import java.util.stream.Collectors;
 
 public enum FlowId {
 
-    UNKNOWN("unknown", HttpMethod.GET, List.of()),
-    WALLET_LIST("wallet_list", HttpMethod.GET, List.of("/api/wallets")),
-    CARD_LIST("card_list", HttpMethod.GET, List.of("/api/cards", "/api/cards/me")),
-    QR_REGISTER("qr_register", HttpMethod.POST, List.of("/api/wallets"));
+    UNKNOWN("unknown", HttpMethod.ANY, List.of()),
+    WALLET_LIST_GET("wallet_list_get", HttpMethod.GET, List.of("/api/wallets")),
+    CARD_LIST_GET("card_list_get", HttpMethod.GET, List.of("/api/cards", "/api/cards/me")),
+    CARD_GET("card_Get", HttpMethod.GET, List.of("/api/cards/{card_id}", "/api/cards/me/latest")),
+    CARD_REGISTER("card_register", HttpMethod.POST, List.of("/api/wallets"));
 
     private final String flowId;
     private final HttpMethod method;
@@ -54,6 +55,6 @@ public enum FlowId {
     }
 
     public enum HttpMethod {
-        GET, POST, PUT, PATCH, DELETE
+        GET, POST, PUT, PATCH, DELETE, ANY
     }
 }

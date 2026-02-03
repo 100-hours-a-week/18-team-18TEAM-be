@@ -16,7 +16,10 @@ public class FlowResolver {
         String normalizedPath = stripQuery(path);
 
         return FLOWS.stream()
-                .filter(f -> f.method().name().equalsIgnoreCase(method))
+                .filter(f ->
+                        f.method() == FlowId.HttpMethod.ANY
+                                || f.method().name().equalsIgnoreCase(method)
+                )
                 .filter(f -> f.pathTemplates().stream().anyMatch(tpl -> matchesTemplate(normalizedPath, tpl)))
                 .findFirst()
                 .map(FlowId::flowId)
@@ -25,9 +28,13 @@ public class FlowResolver {
 
     static boolean matchesTemplate(String path, String template) {
         if (template == null || template.isBlank()) return false;
+        if (path.equals(template)) return true;
 
-        return path.equals(template)
-                || path.startsWith(template + "/");
+        String regex = template
+                .replaceAll("\\{[^/]+}", "[^/]+")
+                .replace("/", "\\/");
+
+        return path.matches("^" + regex + "$");
     }
 
     static String stripQuery(String path) {
