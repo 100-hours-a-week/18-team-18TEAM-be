@@ -68,3 +68,7 @@ ai:
   client:
     base-url: ${AI_SERVER_URL:http://localhost:8000}
     timeout-seconds: ${AI_TIMEOUT_SECONDS:60}
+
+metrics:
+  http:
+    deny-uri-exact: ${METRICS_DENY_URI_LIST}
