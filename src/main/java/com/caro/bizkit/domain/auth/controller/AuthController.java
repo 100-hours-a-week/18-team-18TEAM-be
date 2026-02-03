@@ -17,6 +17,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.util.Arrays;
+import java.util.List;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -82,6 +83,10 @@ public class AuthController {
     ) {
         TokenPair tokenPair = authService.login(provider, request.code(), request.redirectUri());
 
+        // 기존 쿠키 삭제 (다양한 path로 설정된 쿠키들 정리)
+        clearAuthCookies(response);
+
+        // 새 쿠키 발급
         ResponseCookie accessCookie = ResponseCookie.from("accessToken", tokenPair.accessToken())
                 .httpOnly(true)
                 .secure(cookieSecure)
@@ -127,6 +132,10 @@ public class AuthController {
 
         TokenPair tokenPair = authService.refresh(refreshToken);
 
+        // 기존 쿠키 삭제 (다양한 path로 설정된 쿠키들 정리)
+        clearAuthCookies(response);
+
+        // 새 쿠키 발급
         ResponseCookie accessCookie = ResponseCookie.from("accessToken", tokenPair.accessToken())
                 .httpOnly(true)
                 .secure(cookieSecure)
@@ -156,25 +165,7 @@ public class AuthController {
             HttpServletResponse response
     ) {
         authService.logout(userPrincipal.id());
-
-        ResponseCookie accessCookie = ResponseCookie.from("accessToken", "")
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .sameSite(cookieSameSite)
-                .path("/")
-                .maxAge(0)
-                .build();
-
-        ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", "")
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .sameSite(cookieSameSite)
-                .path("/api/auth/rotation")
-                .maxAge(0)
-                .build();
-
-        response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
-        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
+        clearAuthCookies(response);
         return ResponseEntity.ok().body(ApiResponse.success("로그아웃 성공", null));
     }
 
@@ -201,5 +192,24 @@ public class AuthController {
                 .orElse(null);
     }
 
-
+    private void clearAuthCookies(HttpServletResponse response) {
+        for (String path : List.of("/", "/api", "/api/auth", "/api/auth/rotation")) {
+            ResponseCookie deleteAccess = ResponseCookie.from("accessToken", "")
+                    .httpOnly(true)
+                    .secure(cookieSecure)
+                    .sameSite(cookieSameSite)
+                    .path(path)
+                    .maxAge(0)
+                    .build();
+            ResponseCookie deleteRefresh = ResponseCookie.from("refreshToken", "")
+                    .httpOnly(true)
+                    .secure(cookieSecure)
+                    .sameSite(cookieSameSite)
+                    .path(path)
+                    .maxAge(0)
+                    .build();
+            response.addHeader(HttpHeaders.SET_COOKIE, deleteAccess.toString());
+            response.addHeader(HttpHeaders.SET_COOKIE, deleteRefresh.toString());
+        }
+    }
 }
