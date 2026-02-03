@@ -83,7 +83,7 @@ public class AuthService {
     public TokenPair refresh(String refreshToken) {
         Integer userId = refreshTokenService.validateAndGetUserId(refreshToken);
         if (userId == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid refresh token");
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No User Id in refresh token");
         }
 
         User user = userRepository.findById(userId)
