@@ -81,10 +81,13 @@ public class AuthService {
 
     @Transactional(readOnly = true)
     public TokenPair refresh(String refreshToken) {
+        log.info("[토큰 갱신] 요청 받은 refreshToken={}", refreshToken);
         Integer userId = refreshTokenService.validateAndGetUserId(refreshToken);
         if (userId == null) {
+            log.error("[토큰 갱신] 실패 - refreshToken에서 userId를 찾을 수 없음");
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No User Id in refresh token");
         }
+        log.info("[토큰 갱신] userId={} 확인됨", userId);
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
