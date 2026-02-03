@@ -28,6 +28,7 @@ public class RefreshTokenService {
         String refreshToken = UUID.randomUUID().toString();
         String hashedToken = hashToken(refreshToken);
         long ttl = jwtProperties.getRefreshTokenValiditySeconds();
+        log.info("[RefreshToken 생성] 생성된 UUID={}, hashedToken={}", refreshToken, hashedToken);
 
         String userKey = USER_KEY_PREFIX + userId;
         redisTemplate.opsForValue().set(userKey, hashedToken, ttl, TimeUnit.SECONDS);
