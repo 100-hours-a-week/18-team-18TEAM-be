@@ -11,8 +11,10 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Size;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -27,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/api/wallets")
 @RequiredArgsConstructor
+@Validated
 @Tag(name = "Wallet", description = "명함 지갑 API")
 public class WalletController {
 
@@ -54,7 +57,7 @@ public class WalletController {
             @AuthenticationPrincipal UserPrincipal user,
             @RequestParam(defaultValue = "20") Integer size,
             @RequestParam(required = false) Integer cursorId,
-            @RequestParam(required = false) String keyword
+            @RequestParam(required = false) @Size(max = 100, message = "검색어는 100자 이하로 입력해주세요") String keyword
     ) {
         CollectedCardsResult result = walletService.getCollectedCards(user, size, cursorId, keyword);
         Pagination pagination = new Pagination(result.cursorId(), result.hasNext());

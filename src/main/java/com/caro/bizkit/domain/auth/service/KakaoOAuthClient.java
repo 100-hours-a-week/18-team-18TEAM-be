@@ -58,7 +58,7 @@ public class KakaoOAuthClient {
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, response ->
                         response.bodyToMono(KakaoOAuthErrorResponse.class)
-                                .defaultIfEmpty(new KakaoOAuthErrorResponse(null, null, null))
+                                .defaultIfEmpty(new KakaoOAuthErrorResponse(null, null, null, null, null))
                                 .flatMap(error -> Mono.error(toKakaoOAuthException(
                                         "인가 코드가 맞지 않습니다.",
                                         response.statusCode(),
@@ -75,7 +75,7 @@ public class KakaoOAuthClient {
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, response ->
                         response.bodyToMono(KakaoOAuthErrorResponse.class)
-                                .defaultIfEmpty(new KakaoOAuthErrorResponse(null, null, null))
+                                .defaultIfEmpty(new KakaoOAuthErrorResponse(null, null, null, null, null))
                                 .flatMap(error -> Mono.error(toKakaoOAuthException(
                                         "카카오 사용자 정보 조회에 실패했습니다.",
                                         response.statusCode(),
@@ -104,7 +104,7 @@ public class KakaoOAuthClient {
                 .retrieve()
                 .onStatus(HttpStatusCode::isError, response ->
                         response.bodyToMono(KakaoOAuthErrorResponse.class)
-                                .defaultIfEmpty(new KakaoOAuthErrorResponse(null, null, null))
+                                .defaultIfEmpty(new KakaoOAuthErrorResponse(null, null, null, null, null))
                                 .flatMap(error -> Mono.error(toKakaoOAuthException(
                                         "카카오 연결 해제에 실패했습니다.",
                                         response.statusCode(),
@@ -119,13 +119,18 @@ public class KakaoOAuthClient {
             KakaoOAuthErrorResponse error
     ) {
         String apiMessage = "Kakao OAuth 요청에 실패했습니다.";
+
+        // kauth.kakao.com (토큰 API) 에러 응답 필드
         String errorType = error.error();
         String errorCode = error.errorCode();
         String errorDescription = error.errorDescription();
 
-
+        // kapi.kakao.com (사용자 API) 에러 응답 필드
+        String msg = error.msg();
+        Integer code = error.code();
 
         if (StringUtils.hasText(errorType) || StringUtils.hasText(errorDescription) || StringUtils.hasText(errorCode)) {
+            // kauth 형식 에러 (토큰 API)
             StringBuilder builder = new StringBuilder("Kakao OAuth error");
             if (StringUtils.hasText(errorType)) {
                 builder.append(": ").append(errorType);
@@ -135,6 +140,16 @@ public class KakaoOAuthClient {
             }
             if (StringUtils.hasText(errorDescription)) {
                 builder.append(" - ").append(errorDescription);
+            }
+            apiMessage = builder.toString();
+        } else if (StringUtils.hasText(msg) || code != null) {
+            // kapi 형식 에러 (사용자 API)
+            StringBuilder builder = new StringBuilder("Kakao API error");
+            if (code != null) {
+                builder.append(" (").append(code).append(")");
+            }
+            if (StringUtils.hasText(msg)) {
+                builder.append(": ").append(msg);
             }
             apiMessage = builder.toString();
         }

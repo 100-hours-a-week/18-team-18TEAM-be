@@ -87,14 +87,14 @@ public class AuthController {
                 .secure(cookieSecure)
                 .sameSite(cookieSameSite)
                 .path("/")
-                .maxAge(jwtProperties.getAccessTokenValiditySeconds()*2)
+                .maxAge(jwtProperties.getAccessTokenValiditySeconds())
                 .build();
 
         ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", tokenPair.refreshToken())
                 .httpOnly(true)
                 .secure(cookieSecure)
                 .sameSite(cookieSameSite)
-                .path("/api/auth/rotation")
+                .path("/")
                 .maxAge(refreshTokenService.getRefreshTokenValiditySeconds())
                 .build();
 
@@ -139,7 +139,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(cookieSecure)
                 .sameSite(cookieSameSite)
-                .path("/api/auth/rotation")
+                .path("/")
                 .maxAge(refreshTokenService.getRefreshTokenValiditySeconds())
                 .build();
 

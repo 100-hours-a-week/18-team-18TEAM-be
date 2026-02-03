@@ -43,6 +43,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     @Override
+    protected boolean shouldNotFilter(HttpServletRequest request) {
+        String path = request.getRequestURI();
+        return  path.startsWith("/api/auth/login") ||
+                path.equals("/api/auth/rotation") ||
+                path.equals("/api/auth/kakao/callback") ||
+                path.equals("/error");
+    }
+
+    @Override
     protected void doFilterInternal(
             HttpServletRequest request,
             HttpServletResponse response,
