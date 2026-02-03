@@ -1,5 +1,6 @@
 package com.caro.bizkit.domain.ai.service;
 
+import com.caro.bizkit.common.exception.CustomException;
 import com.caro.bizkit.domain.ai.client.AiAnalysisClient;
 import com.caro.bizkit.domain.ai.dto.AiJobAnalyzeRequest;
 import com.caro.bizkit.domain.ai.dto.AiJobAnalyzeResponse;
@@ -15,7 +16,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -37,6 +38,7 @@ public class AiAnalysisService {
     private final ProjectRepository projectRepository;
     private final ActivityRepository activityRepository;
     private final AiAnalysisTaskRepository taskRepository;
+    private final TransactionTemplate transactionTemplate;
 
     public void addToBatch(Integer userId) {
         pendingUsers.put(userId, LocalDateTime.now());
@@ -44,7 +46,6 @@ public class AiAnalysisService {
     }
 
     @Scheduled(fixedDelay = 300000)
-    @Transactional
     public void processBatch() {
         Set<Integer> userIds = new HashSet<>(pendingUsers.keySet());
         pendingUsers.clear();
@@ -56,37 +57,45 @@ public class AiAnalysisService {
         log.info("Processing batch: {} users", userIds.size());
 
         for (Integer userId : userIds) {
-            processUser(userId);
+            processUserWithTransaction(userId);
         }
     }
 
-    private void processUser(Integer userId) {
-        AiAnalysisTask task = null;
-        try {
-            User user = userRepository.findById(userId).orElseThrow();
-            List<Project> projects = projectRepository.findAllByUserId(userId);
-            List<Activity> activities = activityRepository.findAllByUserId(userId);
+    private void processUserWithTransaction(Integer userId) {
+        transactionTemplate.executeWithoutResult(status -> {
+            AiAnalysisTask task = null;
+            try {
+                User user = userRepository.findById(userId).orElseThrow();
+                List<Project> projects = projectRepository.findAllByUserId(userId);
+                List<Activity> activities = activityRepository.findAllByUserId(userId);
 
-            task = AiAnalysisTask.create(user);
-            taskRepository.save(task);
+                task = AiAnalysisTask.create(user);
+                taskRepository.save(task);
 
-            AiJobAnalyzeRequest request = buildRequest(user, projects, activities);
-            AiJobAnalyzeResponse response = aiClient.analyzeSync(request);
+                AiJobAnalyzeRequest request = buildRequest(user, projects, activities);
+                AiJobAnalyzeResponse response = aiClient.analyzeSync(request);
 
-            if (response != null && response.data() != null) {
-                user.updateDescription(response.data().introduction());
-                task.complete();
-                log.info("AI analysis completed for user: {}", userId);
-            } else {
-                task.fail();
-                log.warn("AI analysis returned empty response for user: {}", userId);
+                if (response != null && response.data() != null) {
+                    user.updateDescription(response.data().introduction());
+                    task.complete();
+                    log.info("AI analysis completed for user: {}", userId);
+                } else {
+                    task.fail();
+                    log.warn("AI analysis returned empty response for user: {}", userId);
+                }
+            } catch (CustomException e) {
+                if (task != null) {
+                    task.fail();
+                }
+                log.error("AI server error for user {}: status={}, message={}",
+                        userId, e.getStatus(), e.getMessage());
+            } catch (Exception e) {
+                if (task != null) {
+                    task.fail();
+                }
+                log.error("AI analysis failed for user: {}", userId, e);
             }
-        } catch (Exception e) {
-            if (task != null) {
-                task.fail();
-            }
-            log.error("AI analysis failed for user: {}", userId, e);
-        }
+        });
     }
 
     private AiJobAnalyzeRequest buildRequest(User user, List<Project> projects, List<Activity> activities) {

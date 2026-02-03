@@ -8,7 +8,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.SQLDelete;
 import java.time.LocalDateTime;
-
+import java.util.UUID;
 
 
 @Entity
@@ -25,13 +25,13 @@ public class User extends BaseTimeEntity {
     @JoinColumn(name = "account_id", nullable = false)
     private Account account;
 
-    @Column(length = 30, nullable = false)
+    @Column(length = 100, nullable = false)
     private String name;
 
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Column(length = 15)
+    @Column(length = 100)
     private String phoneNumber;
 
     @Column(length = 15)
@@ -97,6 +97,9 @@ public class User extends BaseTimeEntity {
 
     public void markDeleted() {
         this.deletedAt = LocalDateTime.now();
+        this.email = "deleted" + getEmail()+ UUID.randomUUID().toString().replaceAll("-", "");
+        this.name = "deleted" + getName()+ UUID.randomUUID().toString().replaceAll("-", "");
+        this.phoneNumber = "deleted" + getPhoneNumber()+ UUID.randomUUID().toString().replaceAll("-", "");
     }
 
 

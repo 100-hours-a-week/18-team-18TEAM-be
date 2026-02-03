@@ -8,7 +8,6 @@ import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.security.JwtProperties;
 import com.caro.bizkit.security.JwtTokenProvider;
 import com.caro.bizkit.security.RefreshTokenService;
-import io.jsonwebtoken.Claims;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -105,7 +104,7 @@ public class AuthController {
     }
 
     @PostMapping("/rotation")
-    @Operation(summary = "토큰 갱신", description = "RefreshToken을 사용하여 새로운 AccessToken과 RefreshToken을 발급합니다.")
+    @Operation(summary = "토큰 갱신", description = "RefreshToken만으로 새로운 AccessToken과 RefreshToken을 발급합니다.")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",
@@ -121,23 +120,12 @@ public class AuthController {
             HttpServletResponse response
     ) {
         String refreshToken = extractCookie(request, "refreshToken");
-        String accessToken = extractCookie(request, "accessToken");
 
-        if (refreshToken == null || accessToken == null) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "토큰이 없습니다.");
+        if (refreshToken == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 없습니다.");
         }
 
-        Integer userId;
-
-        try {
-            Claims claims = jwtTokenProvider.parseClaimsIgnoreExpiration(accessToken);
-            userId = Integer.valueOf(claims.getSubject());
-        } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "액세스 토큰에 문제가 생겼습니다.");
-        }
-
-
-        TokenPair tokenPair = authService.refresh(userId, refreshToken);
+        TokenPair tokenPair = authService.refresh(refreshToken);
 
         ResponseCookie accessCookie = ResponseCookie.from("accessToken", tokenPair.accessToken())
                 .httpOnly(true)
@@ -151,7 +139,7 @@ public class AuthController {
                 .httpOnly(true)
                 .secure(cookieSecure)
                 .sameSite(cookieSameSite)
-                .path("/api/auth/rotation") //보내는 곳
+                .path("/api/auth/rotation")
                 .maxAge(refreshTokenService.getRefreshTokenValiditySeconds())
                 .build();
 
@@ -160,16 +148,6 @@ public class AuthController {
         return ResponseEntity.ok().body(ApiResponse.success("리프레시 토큰 재발급 성공", null));
     }
 
-    private String extractCookie(HttpServletRequest request, String name) {
-        if (request.getCookies() == null) {
-            return null;
-        }
-        return Arrays.stream(request.getCookies())
-                .filter(c -> name.equals(c.getName()))
-                .map(Cookie::getValue)
-                .findFirst()
-                .orElse(null);
-    }
 
     @PostMapping("/logout")
     @Operation(summary = "로그아웃", description = "RefreshToken을 삭제하고 쿠키를 무효화합니다.")
@@ -210,6 +188,17 @@ public class AuthController {
     })
     public ResponseEntity<String> kakaoCallback(@RequestParam String code) {
         return ResponseEntity.ok(code);
+    }
+
+    private String extractCookie(HttpServletRequest request, String name) {
+        if (request.getCookies() == null) {
+            return null;
+        }
+        return Arrays.stream(request.getCookies())
+                .filter(c -> name.equals(c.getName()))
+                .map(Cookie::getValue)
+                .findFirst()
+                .orElse(null);
     }
 
 
