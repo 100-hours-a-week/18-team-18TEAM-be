@@ -4,6 +4,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
 public enum FlowId {
 
@@ -36,11 +37,11 @@ public enum FlowId {
     }
 
     public String primaryTemplateOrUnknown() {
-        return (pathTemplates == null || pathTemplates.isEmpty()) ? "UNKNOWN" : pathTemplates.get(0);
+        return (pathTemplates == null || pathTemplates.isEmpty()) ? "UNKNOWN" : pathTemplates.getFirst();
     }
 
     private static final Map<String, FlowId> BY_FLOW_ID =
-            List.of(values()).stream()
+            Stream.of(values())
                     .collect(Collectors.toUnmodifiableMap(FlowId::flowId, Function.identity()));
 
     public static FlowId fromFlowId(String flowId) {
@@ -49,7 +50,7 @@ public enum FlowId {
     }
 
     public static List<FlowId> definedRoutes() {
-        return List.of(values()).stream()
+        return Stream.of(values())
                 .filter(f -> f.pathTemplates != null && !f.pathTemplates.isEmpty())
                 .toList();
     }
