@@ -7,12 +7,13 @@ import io.micrometer.core.instrument.Meter;
 import io.micrometer.core.instrument.Tag;
 import io.micrometer.core.instrument.Tags;
 import io.micrometer.core.instrument.config.MeterFilter;
-import io.micrometer.core.instrument.config.MeterFilterReply;
 import lombok.RequiredArgsConstructor;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.annotation.Order;
 import org.springframework.http.server.observation.ServerRequestObservationConvention;
+import org.springframework.util.AntPathMatcher;
 
 import java.util.List;
 
@@ -29,23 +30,30 @@ class ObservabilityConfig {
     }
 
     @Bean
+    @Order(0)
     MeterFilter denyNonBusinessHttpRequests() {
-        return new MeterFilter() {
-            @Override
-            public MeterFilterReply accept(Meter.Id id) {
-                if (!"http.server.requests".equals(id.getName())) {
-                    return MeterFilterReply.NEUTRAL;
+        AntPathMatcher matcher = new AntPathMatcher();
+
+        return MeterFilter.deny(id -> {
+            if (!id.getName().startsWith("http.server.requests")) return false;
+
+            String uri = id.getTag("uri");
+            if (uri == null) return false;
+
+            if (props.isDenyUnknownUri() && "UNKNOWN".equals(uri)) return true;
+
+            if (props.getDenyUriExact().contains(uri)) return true;
+
+            for (String pattern : props.getDenyUriPattern()) {
+                if (matcher.match(pattern, uri)) {
+                    if ("/actuator/prometheus".equals(uri)) return false;
+                    return true;
                 }
-
-                String uri = id.getTag("uri");
-                if (uri == null) return MeterFilterReply.NEUTRAL;
-
-                if (props.getDenyUriExact().contains(uri)) return MeterFilterReply.DENY;
-
-                return MeterFilterReply.NEUTRAL;
             }
-        };
+            return false;
+        });
     }
+
 
     @Bean
     MeterFilter normalizeHttpServerRequestsUriByFlow() {

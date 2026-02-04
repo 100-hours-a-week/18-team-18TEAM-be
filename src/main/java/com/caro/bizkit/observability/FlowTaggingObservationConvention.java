@@ -16,7 +16,7 @@ public class FlowTaggingObservationConvention extends DefaultServerRequestObserv
         String method = request != null ? request.getMethod() : "UNKNOWN";
         String path = extractUriTemplateOrPath(request);
 
-        String flow = FlowResolver.resolve(method, path);
+        String flow = FlowId.resolve(method, path);
 
         return base.and("flow", flow);
     }
@@ -29,8 +29,8 @@ public class FlowTaggingObservationConvention extends DefaultServerRequestObserv
     private String extractUriTemplateOrPath(HttpServletRequest request) {
         if (request == null) return "UNKNOWN";
 
-        Object pattern = request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
-        if (pattern != null) return pattern.toString();
+        String pattern = (String) request.getAttribute(HandlerMapping.BEST_MATCHING_PATTERN_ATTRIBUTE);
+        if (pattern != null) return pattern;
 
         return request.getRequestURI();
     }
