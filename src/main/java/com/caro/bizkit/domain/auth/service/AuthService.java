@@ -66,8 +66,8 @@ public class AuthService {
 
         account.updateLoggedAt(java.time.LocalDateTime.now());
 
-        User user = userRepository.findByAccount(account)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User not found"));
+        User user = userRepository.findByAccountAndDeletedAtIsNull(account)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         String accessToken = jwtTokenProvider.generateAccessToken(
                 String.valueOf(user.getId()),
@@ -86,7 +86,7 @@ public class AuthService {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "No User Id in refresh token");
         }
 
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User not found"));
 
         String newAccessToken = jwtTokenProvider.generateAccessToken(

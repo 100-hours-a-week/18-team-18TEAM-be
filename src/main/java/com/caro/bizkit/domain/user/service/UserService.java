@@ -50,9 +50,9 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public UserResponse getUserProfile(Integer userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다"));
-        if (user.getDeletedAt() != null) {
+        User user = userRepository.findByIdAndDeletedAtIsNull(userId)
+                .orElse(null);
+        if (user == null) {
             return null;
         }
         return toResponse(user);
@@ -60,8 +60,8 @@ public class UserService {
 
     @Transactional
     public UserResponse updateMyStatus(UserPrincipal principal, Map<String, Object> request) {
-        User user = userRepository.findById(principal.id())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "사용자를 찾을 수 없습니다"));
+        User user = userRepository.findByIdAndDeletedAtIsNull(principal.id())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다"));
 
         if (request == null) {
             return toResponse(user);
@@ -116,8 +116,8 @@ public class UserService {
     @Transactional
     public void withdraw(UserPrincipal principal) {
 
-        User user = userRepository.findById(principal.id())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "사용자를 찾을 수 없습니다"));
+        User user = userRepository.findByIdAndDeletedAtIsNull(principal.id())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다"));
         Account account = user.getAccount();
 
         // 중간 테이블 삭제
