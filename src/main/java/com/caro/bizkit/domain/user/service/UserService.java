@@ -8,6 +8,7 @@ import com.caro.bizkit.domain.auth.repository.OAuthRepository;
 import com.caro.bizkit.domain.auth.service.KakaoOAuthClient;
 import com.caro.bizkit.domain.auth.service.KakaoOAuthProperties;
 import com.caro.bizkit.domain.card.repository.UserCardRepository;
+import com.caro.bizkit.domain.user.repository.AiUsageRepository;
 import com.caro.bizkit.domain.userdetail.skill.repository.UserSkillRepository;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.user.dto.UserResponse;
@@ -39,6 +40,7 @@ public class UserService {
     private final ApplicationEventPublisher eventPublisher;
     private final UserCardRepository userCardRepository;
     private final UserSkillRepository userSkillRepository;
+    private final AiUsageRepository aiUsageRepository;
 
     public UserResponse getMyStatus(UserPrincipal user) {
         String profileImageUrl = null;
@@ -120,9 +122,10 @@ public class UserService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다"));
         Account account = user.getAccount();
 
-        // 중간 테이블 삭제
+        // 관련 테이블 삭제
         userCardRepository.deleteAllByUserId(principal.id());
         userSkillRepository.deleteAllByUserId(principal.id());
+        aiUsageRepository.deleteByUserId(principal.id());
 
         oAuthRepository.findByAccount(account).ifPresent(oauth -> {
             unlinkFromKakaoIfNeeded(oauth);
