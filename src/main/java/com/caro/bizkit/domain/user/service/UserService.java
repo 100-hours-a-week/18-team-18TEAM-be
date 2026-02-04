@@ -7,6 +7,9 @@ import com.caro.bizkit.domain.auth.entity.OAuth;
 import com.caro.bizkit.domain.auth.repository.OAuthRepository;
 import com.caro.bizkit.domain.auth.service.KakaoOAuthClient;
 import com.caro.bizkit.domain.auth.service.KakaoOAuthProperties;
+import com.caro.bizkit.domain.card.repository.UserCardRepository;
+import com.caro.bizkit.domain.user.repository.AiUsageRepository;
+import com.caro.bizkit.domain.userdetail.skill.repository.UserSkillRepository;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.user.dto.UserResponse;
 import java.time.LocalDateTime;
@@ -35,6 +38,9 @@ public class UserService {
     private final KakaoOAuthClient kakaoOAuthClient;
     private final KakaoOAuthProperties kakaoOAuthProperties;
     private final ApplicationEventPublisher eventPublisher;
+    private final UserCardRepository userCardRepository;
+    private final UserSkillRepository userSkillRepository;
+    private final AiUsageRepository aiUsageRepository;
 
     public UserResponse getMyStatus(UserPrincipal user) {
         String profileImageUrl = null;
@@ -46,9 +52,9 @@ public class UserService {
 
     @Transactional(readOnly = true)
     public UserResponse getUserProfile(Integer userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
-        if (user.getDeletedAt() != null) {
+        User user = userRepository.findByIdAndDeletedAtIsNull(userId)
+                .orElse(null);
+        if (user == null) {
             return null;
         }
         return toResponse(user);
@@ -56,8 +62,8 @@ public class UserService {
 
     @Transactional
     public UserResponse updateMyStatus(UserPrincipal principal, Map<String, Object> request) {
-        User user = userRepository.findById(principal.id())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User not found"));
+        User user = userRepository.findByIdAndDeletedAtIsNull(principal.id())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다"));
 
         if (request == null) {
             return toResponse(user);
@@ -112,9 +118,14 @@ public class UserService {
     @Transactional
     public void withdraw(UserPrincipal principal) {
 
-        User user = userRepository.findById(principal.id())
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "User not found"));
+        User user = userRepository.findByIdAndDeletedAtIsNull(principal.id())
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다"));
         Account account = user.getAccount();
+
+        // 관련 테이블 삭제
+        userCardRepository.deleteAllByUserId(principal.id());
+        userSkillRepository.deleteAllByUserId(principal.id());
+        aiUsageRepository.deleteByUserId(principal.id());
 
         oAuthRepository.findByAccount(account).ifPresent(oauth -> {
             unlinkFromKakaoIfNeeded(oauth);

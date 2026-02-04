@@ -48,6 +48,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return  path.startsWith("/api/auth/login") ||
                 path.equals("/api/auth/rotation") ||
                 path.equals("/api/auth/kakao/callback") ||
+                path.startsWith("/api/cards/uuid/") ||
                 path.equals("/error");
     }
 
@@ -76,7 +77,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             writeUnauthorizedResponse(response, "유효하지 않은 토큰입니다. 사용자 식별자가 올바르지 않습니다.");
             return;
         }
-        User user = userRepository.findById(userId).orElse(null);
+        User user = userRepository.findByIdAndDeletedAtIsNull(userId).orElse(null);
 
         if (user == null) {
             log.warn("User not found for token: method={}, path={}, userId={}",
