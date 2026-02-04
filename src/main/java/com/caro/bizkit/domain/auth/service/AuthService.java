@@ -115,7 +115,7 @@ public class AuthService {
         AiUsage aiUsage = AiUsage.create(user);
         userRepository.save(user);
         aiUsageRepository.save(aiUsage);
-        log.info("Account created: {}", savedAccount);
+        log.info("Account created: {}", loginEmail);
 
         return savedAccount;
     }
