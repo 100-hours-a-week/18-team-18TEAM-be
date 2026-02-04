@@ -5,8 +5,11 @@ import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.user.dto.UserResponse;
 
 import com.caro.bizkit.domain.user.service.UserService;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.Map;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -18,11 +21,22 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 @RestController
 @RequestMapping("/api/users")
-@RequiredArgsConstructor
 @Tag(name = "User", description = "사용자 정보 조회 API")
 public class UserController {
 
     private final UserService userService;
+    private final boolean cookieSecure;
+    private final String cookieSameSite;
+
+    public UserController(
+            UserService userService,
+            @Value("${cookie.secure:true}") boolean cookieSecure,
+            @Value("${cookie.same-site:Lax}") String cookieSameSite
+    ) {
+        this.userService = userService;
+        this.cookieSecure = cookieSecure;
+        this.cookieSameSite = cookieSameSite;
+    }
 
     @GetMapping("/me")
     @Operation(summary = "내 정보 조회", description = "인증된 사용자의 기본 정보를 조회합니다.")
@@ -61,10 +75,30 @@ public class UserController {
     @DeleteMapping("/me")
     @Operation(summary = "회원 탈퇴", description = "카카오 연결 해제 후 계정을 탈퇴 처리합니다.")
     public ResponseEntity<ApiResponse<Void>> withdraw(
-            @AuthenticationPrincipal UserPrincipal user
+            @AuthenticationPrincipal UserPrincipal user,
+            HttpServletResponse response
     ) {
         userService.withdraw(user);
+        clearAuthCookies(response);
         return ResponseEntity.ok(ApiResponse.success("회원 탈퇴 성공", null));
     }
 
+    private void clearAuthCookies(HttpServletResponse response) {
+        ResponseCookie deleteAccess = ResponseCookie.from("accessToken", "")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
+                .path("/")
+                .maxAge(0)
+                .build();
+        ResponseCookie deleteRefresh = ResponseCookie.from("refreshToken", "")
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
+                .path("/")
+                .maxAge(0)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, deleteAccess.toString());
+        response.addHeader(HttpHeaders.SET_COOKIE, deleteRefresh.toString());
+    }
 }
