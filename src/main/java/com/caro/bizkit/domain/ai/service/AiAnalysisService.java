@@ -65,7 +65,7 @@ public class AiAnalysisService {
         transactionTemplate.executeWithoutResult(status -> {
             AiAnalysisTask task = null;
             try {
-                User user = userRepository.findById(userId).orElseThrow();
+                User user = userRepository.findByIdAndDeletedAtIsNull(userId).orElseThrow();
                 List<Project> projects = projectRepository.findAllByUserId(userId);
                 List<Activity> activities = activityRepository.findAllByUserId(userId);
 

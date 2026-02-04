@@ -30,4 +30,6 @@ public interface UserCardRepository extends BaseRepository<UserCard, Integer> {
             @Param("keyword") String keyword,
             Pageable pageable
     );
+
+    void deleteAllByUserId(Integer userId);
 }
