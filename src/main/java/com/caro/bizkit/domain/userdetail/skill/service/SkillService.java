@@ -55,7 +55,7 @@ public class SkillService {
 
     @Transactional
     public List<SkillResponse> updateMySkills(UserPrincipal principal, SkillUpdateRequest request) {
-        User user = userRepository.findById(principal.id())
+        User user = userRepository.findByIdAndDeletedAtIsNull(principal.id())
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "User not found"));
 
         userSkillRepository.deleteAllByUserId(principal.id());

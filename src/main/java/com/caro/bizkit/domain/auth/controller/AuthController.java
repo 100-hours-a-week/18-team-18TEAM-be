@@ -156,6 +156,7 @@ public class AuthController {
             return ResponseEntity.ok().body(ApiResponse.success("리프레시 토큰 재발급 성공", null));
         } catch (Exception e) {
             log.warn("토큰 재발행 실패: {}", e.getMessage());
+            clearAuthCookies(response);
             throw e;
         }
     }
