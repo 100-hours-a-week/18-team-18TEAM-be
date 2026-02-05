@@ -134,7 +134,12 @@ public class CardService {
             card.updatePhoneNumber(value);
         });
         applyIfPresent(request, "lined_number", card::updateLinedNumber);
-        applyIfPresent(request, "company", card::updateCompany);
+        applyIfPresent(request, "company", value -> {
+            if (!value.matches("^[가-힣a-zA-Z0-9\\s()&.]+$")) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "회사명 형식이 올바르지 않습니다");
+            }
+            card.updateCompany(value);
+        });
         applyIfPresent(request, "position", card::updatePosition);
         applyIfPresent(request, "department", card::updateDepartment);
         applyDateIfPresent(request, "start_date", card::updateStartDate);

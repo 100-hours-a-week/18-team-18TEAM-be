@@ -21,6 +21,7 @@ public record CardRequest(
         String lined_number,
         @NotBlank
         @Size(max = 20)
+        @Pattern(regexp = "^[가-힣a-zA-Z0-9\\s()&.]+$", message = "회사명 형식이 올바르지 않습니다")
         String company,
         @Size(max = 20)
         String position,
