@@ -10,6 +10,7 @@ import java.time.LocalDate;
 public record CardRequest(
         @NotBlank
         @Size(max = 30)
+        @Pattern(regexp = "^[^\\p{P}\\p{S}\\p{Z}\\p{N}\\p{C}]+$", message = "이름 형식이 올바르지 않습니다")
         String name,
         @NotBlank
         @Email

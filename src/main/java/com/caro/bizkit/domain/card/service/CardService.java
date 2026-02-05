@@ -120,7 +120,12 @@ public class CardService {
     }
 
     private void applyUpdates(Card card, Map<String, Object> request) {
-        applyIfPresent(request, "name", card::updateName);
+        applyIfPresent(request, "name", value -> {
+            if (!value.matches("^[^\\p{P}\\p{S}\\p{Z}\\p{N}\\p{C}]+$")) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이름 형식이 올바르지 않습니다");
+            }
+            card.updateName(value);
+        });
         applyIfPresent(request, "email", card::updateEmail);
         applyIfPresent(request, "phone_number", value -> {
             if (!value.matches("^010-\\d{4}-\\d{4}$")) {
