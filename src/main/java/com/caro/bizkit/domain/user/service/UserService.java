@@ -51,12 +51,21 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public UserResponse getUserProfile(Integer userId) {
+    public UserResponse getUserProfile(UserPrincipal principal, Integer userId) {
         User user = userRepository.findByIdAndDeletedAtIsNull(userId)
-                .orElse(null);
-        if (user == null) {
-            return null;
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다"));
+
+        // 자기 자신의 프로필은 조회 가능
+        if (principal.id().equals(userId)) {
+            return toResponse(user);
         }
+
+        // 수집한 카드의 주인인지 확인
+        boolean hasCollectedCard = userCardRepository.existsCollectedCardByOwner(principal.id(), userId);
+        if (!hasCollectedCard) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다");
+        }
+
         return toResponse(user);
     }
 

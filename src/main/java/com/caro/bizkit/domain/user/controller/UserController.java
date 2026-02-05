@@ -49,15 +49,16 @@ public class UserController {
     }
 
     @GetMapping("/{user_id}")
-    @Operation(summary = "상대 정보 조회", description = "상대 사용자의 기본 정보를 조회합니다.")
+    @Operation(summary = "상대 정보 조회", description = "수집한 카드의 주인 프로필을 조회합니다.")
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "403", description = "수집한 카드의 주인이 아닌 경우")
     })
-    public ResponseEntity<ApiResponse<UserResponse>> getUserProfile(@PathVariable("user_id") Integer userId) {
-        UserResponse userResponse = userService.getUserProfile(userId);
-        if (userResponse == null) {
-            return ResponseEntity.ok(ApiResponse.success("탈퇴한 회원입니다", null));
-        }
+    public ResponseEntity<ApiResponse<UserResponse>> getUserProfile(
+            @AuthenticationPrincipal UserPrincipal principal,
+            @PathVariable("user_id") Integer userId
+    ) {
+        UserResponse userResponse = userService.getUserProfile(principal, userId);
         return ResponseEntity.ok(ApiResponse.success("사용자 정보 조회 성공", userResponse));
     }
 

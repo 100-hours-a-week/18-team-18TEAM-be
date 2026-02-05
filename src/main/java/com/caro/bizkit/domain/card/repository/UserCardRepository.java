@@ -32,4 +32,19 @@ public interface UserCardRepository extends BaseRepository<UserCard, Integer> {
     );
 
     void deleteAllByUserId(Integer userId);
+
+    /**
+     * 특정 사용자(collectorId)가 수집한 카드 중에서
+     * 카드 주인이 cardOwnerId인 카드가 있는지 확인
+     */
+    @Query("""
+            SELECT CASE WHEN COUNT(uc) > 0 THEN true ELSE false END
+            FROM UserCard uc
+            WHERE uc.user.id = :collectorId
+              AND uc.card.user.id = :cardOwnerId
+            """)
+    boolean existsCollectedCardByOwner(
+            @Param("collectorId") Integer collectorId,
+            @Param("cardOwnerId") Integer cardOwnerId
+    );
 }
