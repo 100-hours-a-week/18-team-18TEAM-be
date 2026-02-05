@@ -82,8 +82,7 @@ public class Card extends BaseTimeEntity {
             String department,
             LocalDate startDate,
             LocalDate endDate,
-            String aiImageKey,
-            String description
+            String aiImageKey
     ) {
         Card card = new Card();
         card.user = user;
@@ -99,7 +98,6 @@ public class Card extends BaseTimeEntity {
         card.endDate = endDate;
         card.isProgress = (endDate == null);
         card.aiImageKey = aiImageKey;
-        card.description = description;
         return card;
     }
 

@@ -5,7 +5,8 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import java.util.List;
 
 public record AiJobAnalyzeRequest(
-        @JsonProperty("user_id") Integer userId,
+        //ai 서버에 request 형식을 맞추기 위한 것
+        @JsonProperty("user_id") Integer cardId,
         String name,
         String company,
         String department,

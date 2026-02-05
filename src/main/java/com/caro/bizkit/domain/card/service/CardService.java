@@ -1,9 +1,12 @@
 package com.caro.bizkit.domain.card.service;
 
+import com.caro.bizkit.domain.ai.event.CardInfoUpdatedEvent;
 import com.caro.bizkit.domain.card.dto.CardRequest;
 import com.caro.bizkit.domain.card.dto.CardResponse;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
+import org.springframework.util.StringUtils;
 import java.util.Map;
 import java.util.function.Consumer;
 import com.caro.bizkit.domain.card.entity.Card;
@@ -13,6 +16,7 @@ import com.caro.bizkit.domain.user.repository.UserRepository;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -25,6 +29,7 @@ public class CardService {
 
     private final CardRepository cardRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public List<CardResponse> getCardsByUserId(Integer userId) {
@@ -79,6 +84,13 @@ public class CardService {
                 request.ai_image_key()
         );
         Card saved = cardRepository.save(card);
+
+        if (hasJobInfo(saved)) {
+            eventPublisher.publishEvent(new CardInfoUpdatedEvent(
+                    saved.getId(), "CARD", LocalDateTime.now()
+            ));
+        }
+
         return CardResponse.from(saved);
     }
 
@@ -97,6 +109,13 @@ public class CardService {
         }
 
         applyUpdates(card, request);
+
+        if (hasJobInfo(card)) {
+            eventPublisher.publishEvent(new CardInfoUpdatedEvent(
+                    card.getId(), "CARD", LocalDateTime.now()
+            ));
+        }
+
         return CardResponse.from(card);
     }
 
@@ -147,6 +166,12 @@ public class CardService {
                 updater.accept(parseDate((String) value));
             }
         }
+    }
+
+    private boolean hasJobInfo(Card card) {
+        return StringUtils.hasText(card.getCompany())
+                && StringUtils.hasText(card.getPosition())
+                && StringUtils.hasText(card.getDepartment());
     }
 
     private LocalDate parseDate(String value) {
