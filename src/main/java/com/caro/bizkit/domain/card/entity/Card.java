@@ -67,6 +67,9 @@ public class Card extends BaseTimeEntity {
     @Column(length = 500)
     private String aiImageKey;
 
+    @Column(length = 500)
+    private String description;
+
     public static Card create(
             User user,
             String uuid,
@@ -152,5 +155,9 @@ public class Card extends BaseTimeEntity {
 
     public void updateAiImageKey(String aiImageKey) {
         this.aiImageKey = aiImageKey;
+    }
+
+    public void updateDescription(String description) {
+        this.description = description;
     }
 }

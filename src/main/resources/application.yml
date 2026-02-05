@@ -72,3 +72,4 @@ ai:
 metrics:
   http:
     deny-uri-exact: ${METRICS_DENY_URI_LIST}
+    deny-uri-pattern: ${METRICS_DENY_URI_PATTERN}

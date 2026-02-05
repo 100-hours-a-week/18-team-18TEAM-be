@@ -1,6 +1,8 @@
 package com.caro.bizkit.domain.userdetail.project.service;
 
-import com.caro.bizkit.domain.ai.event.UserProfileUpdatedEvent;
+import com.caro.bizkit.common.security.CardCollectionValidator;
+import com.caro.bizkit.domain.ai.event.CardInfoUpdatedEvent;
+import com.caro.bizkit.domain.card.repository.CardRepository;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.user.entity.User;
 import com.caro.bizkit.domain.user.repository.UserRepository;
@@ -28,7 +30,9 @@ public class ProjectService {
 
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
+    private final CardRepository cardRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final CardCollectionValidator cardCollectionValidator;
 
     @Transactional(readOnly = true)
     public List<ProjectResponse> getMyProjects(UserPrincipal principal) {
@@ -38,7 +42,8 @@ public class ProjectService {
     }
 
     @Transactional(readOnly = true)
-    public List<ProjectResponse> getProjectsByUserId(Integer userId) {
+    public List<ProjectResponse> getProjectsByUserId(UserPrincipal principal, Integer userId) {
+        cardCollectionValidator.validateAccess(principal.id(), userId);
         return projectRepository.findAllByUserId(userId).stream()
                 .map(ProjectResponse::from)
                 .toList();
@@ -56,9 +61,10 @@ public class ProjectService {
         );
         Project saved = projectRepository.save(project);
 
-        eventPublisher.publishEvent(new UserProfileUpdatedEvent(
-                principal.id(), "PROJECT", LocalDateTime.now()
-        ));
+        cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByStartDateDesc(principal.id())
+                .ifPresent(card -> eventPublisher.publishEvent(new CardInfoUpdatedEvent(
+                        card.getId(), "CARD", LocalDateTime.now()
+                )));
 
         return ProjectResponse.from(saved);
     }
@@ -79,9 +85,10 @@ public class ProjectService {
 
         applyUpdates(project, request);
 
-        eventPublisher.publishEvent(new UserProfileUpdatedEvent(
-                principal.id(), "PROJECT", LocalDateTime.now()
-        ));
+        cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByStartDateDesc(principal.id())
+                .ifPresent(card -> eventPublisher.publishEvent(new CardInfoUpdatedEvent(
+                        card.getId(), "CARD", LocalDateTime.now()
+                )));
 
         return ProjectResponse.from(project);
     }
@@ -143,8 +150,9 @@ public class ProjectService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
         projectRepository.delete(project);
 
-        eventPublisher.publishEvent(new UserProfileUpdatedEvent(
-                principal.id(), "PROJECT", LocalDateTime.now()
-        ));
+        cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByStartDateDesc(principal.id())
+                .ifPresent(card -> eventPublisher.publishEvent(new CardInfoUpdatedEvent(
+                        card.getId(), "CARD", LocalDateTime.now()
+                )));
     }
 }

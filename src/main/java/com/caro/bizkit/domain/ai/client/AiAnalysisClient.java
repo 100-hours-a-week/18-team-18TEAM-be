@@ -23,7 +23,7 @@ public class AiAnalysisClient {
     private final AiClientProperties properties;
 
     public AiJobAnalyzeResponse analyzeSync(AiJobAnalyzeRequest request) {
-        log.info("Requesting AI analysis for user: {}", request.userId());
+        log.info("Requesting AI analysis for card: {}", request.cardId());
 
         return webClientBuilder.build()
                 .post()

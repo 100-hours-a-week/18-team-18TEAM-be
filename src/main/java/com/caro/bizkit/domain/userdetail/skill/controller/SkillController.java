@@ -36,13 +36,14 @@ public class SkillController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
     })
     public ResponseEntity<ApiResponse<List<SkillResponse>>> getSkills(
+            @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam(value = "userId", required = false) Integer userId
     ) {
         if (userId == null) {
             List<SkillResponse> skills = skillService.getAllSkills();
             return ResponseEntity.ok(ApiResponse.success("스킬 목록 조회 성공", skills));
         }
-        List<SkillResponse> skills = skillService.getSkillsByUserId(userId);
+        List<SkillResponse> skills = skillService.getSkillsByUserId(principal, userId);
         return ResponseEntity.ok(ApiResponse.success("사용자 스킬 조회 성공", skills));
     }
 

@@ -1,7 +1,8 @@
 package com.caro.bizkit.domain.user.service;
 
 import com.caro.bizkit.common.S3.service.S3Service;
-import com.caro.bizkit.domain.ai.event.UserProfileUpdatedEvent;
+import com.caro.bizkit.common.security.CardCollectionValidator;
+
 import com.caro.bizkit.domain.auth.entity.Account;
 import com.caro.bizkit.domain.auth.entity.OAuth;
 import com.caro.bizkit.domain.auth.repository.OAuthRepository;
@@ -12,15 +13,13 @@ import com.caro.bizkit.domain.user.repository.AiUsageRepository;
 import com.caro.bizkit.domain.userdetail.skill.repository.UserSkillRepository;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.user.dto.UserResponse;
-import java.time.LocalDateTime;
 import java.util.Map;
-import java.util.Objects;
 import java.util.function.Consumer;
 import com.caro.bizkit.domain.user.entity.User;
 import com.caro.bizkit.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
@@ -37,8 +36,9 @@ public class UserService {
     private final OAuthRepository oAuthRepository;
     private final KakaoOAuthClient kakaoOAuthClient;
     private final KakaoOAuthProperties kakaoOAuthProperties;
-    private final ApplicationEventPublisher eventPublisher;
+
     private final UserCardRepository userCardRepository;
+    private final CardCollectionValidator cardCollectionValidator;
     private final UserSkillRepository userSkillRepository;
     private final AiUsageRepository aiUsageRepository;
 
@@ -51,12 +51,12 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public UserResponse getUserProfile(Integer userId) {
+    public UserResponse getUserProfile(UserPrincipal principal, Integer userId) {
         User user = userRepository.findByIdAndDeletedAtIsNull(userId)
-                .orElse(null);
-        if (user == null) {
-            return null;
-        }
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다"));
+
+        cardCollectionValidator.validateAccess(principal.id(), userId);
+
         return toResponse(user);
     }
 
@@ -69,10 +69,6 @@ public class UserService {
             return toResponse(user);
         }
 
-        String oldCompany = user.getCompany();
-        String oldDepartment = user.getDepartment();
-        String oldPosition = user.getPosition();
-
         String previousKey = user.getProfileImageKey();
         applyUpdates(user, request);
 
@@ -82,30 +78,11 @@ public class UserService {
             s3Service.deleteObject(previousKey);
         }
 
-        boolean hasJobInfo = StringUtils.hasText(user.getCompany()) &&
-                StringUtils.hasText(user.getPosition()) &&
-                StringUtils.hasText(user.getDepartment());
-
-        boolean jobInfoChanged = !Objects.equals(oldCompany, user.getCompany()) ||
-                !Objects.equals(oldDepartment, user.getDepartment()) ||
-                !Objects.equals(oldPosition, user.getPosition());
-
-        if (jobInfoChanged && hasJobInfo) {
-            eventPublisher.publishEvent(new UserProfileUpdatedEvent(
-                    user.getId(), "USER", LocalDateTime.now()
-            ));
-        }
-
         return toResponse(user);
     }
 
     private void applyUpdates(User user, Map<String, Object> request) {
         applyIfPresent(request, "name", user::updateName);
-        applyIfPresent(request, "phone_number", user::updatePhoneNumber);
-        applyIfPresent(request, "lined_number", user::updateLinedNumber);
-        applyIfPresent(request, "company", user::updateCompany);
-        applyIfPresent(request, "department", user::updateDepartment);
-        applyIfPresent(request, "position", user::updatePosition);
         applyIfPresent(request, "profile_image_key", user::updateProfileImageKey);
     }
 
@@ -156,13 +133,7 @@ public class UserService {
                 user.getId(),
                 user.getName(),
                 user.getEmail(),
-                user.getPhoneNumber(),
-                user.getLinedNumber(),
-                user.getCompany(),
-                user.getDepartment(),
-                user.getPosition(),
-                profileImageUrl,
-                user.getDescription()
+                profileImageUrl
         );
     }
 }

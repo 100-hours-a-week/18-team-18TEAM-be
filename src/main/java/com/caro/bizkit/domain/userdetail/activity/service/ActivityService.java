@@ -1,6 +1,8 @@
 package com.caro.bizkit.domain.userdetail.activity.service;
 
-import com.caro.bizkit.domain.ai.event.UserProfileUpdatedEvent;
+import com.caro.bizkit.common.security.CardCollectionValidator;
+import com.caro.bizkit.domain.ai.event.CardInfoUpdatedEvent;
+import com.caro.bizkit.domain.card.repository.CardRepository;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.user.entity.User;
 import com.caro.bizkit.domain.user.repository.UserRepository;
@@ -27,7 +29,9 @@ public class ActivityService {
 
     private final ActivityRepository activityRepository;
     private final UserRepository userRepository;
+    private final CardRepository cardRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final CardCollectionValidator cardCollectionValidator;
 
     @Transactional(readOnly = true)
     public List<ActivityResponse> getMyActivities(UserPrincipal principal) {
@@ -37,7 +41,8 @@ public class ActivityService {
     }
 
     @Transactional(readOnly = true)
-    public List<ActivityResponse> getActivitiesByUserId(Integer userId) {
+    public List<ActivityResponse> getActivitiesByUserId(UserPrincipal principal, Integer userId) {
+        cardCollectionValidator.validateAccess(principal.id(), userId);
         return activityRepository.findAllByUserId(userId).stream()
                 .map(ActivityResponse::from)
                 .toList();
@@ -56,9 +61,10 @@ public class ActivityService {
         );
         Activity saved = activityRepository.save(activity);
 
-        eventPublisher.publishEvent(new UserProfileUpdatedEvent(
-                principal.id(), "ACTIVITY", LocalDateTime.now()
-        ));
+        cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByStartDateDesc(principal.id())
+                .ifPresent(card -> eventPublisher.publishEvent(new CardInfoUpdatedEvent(
+                        card.getId(), "CARD", LocalDateTime.now()
+                )));
 
         return ActivityResponse.from(saved);
     }
@@ -79,9 +85,10 @@ public class ActivityService {
 
         applyUpdates(activity, request);
 
-        eventPublisher.publishEvent(new UserProfileUpdatedEvent(
-                principal.id(), "ACTIVITY", LocalDateTime.now()
-        ));
+        cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByStartDateDesc(principal.id())
+                .ifPresent(card -> eventPublisher.publishEvent(new CardInfoUpdatedEvent(
+                        card.getId(), "CARD", LocalDateTime.now()
+                )));
 
         return ActivityResponse.from(activity);
     }
@@ -118,8 +125,9 @@ public class ActivityService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Activity not found"));
         activityRepository.delete(activity);
 
-        eventPublisher.publishEvent(new UserProfileUpdatedEvent(
-                principal.id(), "ACTIVITY", LocalDateTime.now()
-        ));
+        cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByStartDateDesc(principal.id())
+                .ifPresent(card -> eventPublisher.publishEvent(new CardInfoUpdatedEvent(
+                        card.getId(), "CARD", LocalDateTime.now()
+                )));
     }
 }

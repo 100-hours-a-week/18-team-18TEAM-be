@@ -95,6 +95,7 @@ public class AuthService {
         );
         String newRefreshToken = refreshTokenService.createRefreshToken(user.getId());
 
+        log.info("토큰 재발행 성공: userId={}", userId);
         return new TokenPair(newAccessToken, newRefreshToken);
     }
 

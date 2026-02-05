@@ -50,9 +50,10 @@ public class ActivityController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
     })
     public ResponseEntity<ApiResponse<List<ActivityResponse>>> getActivitiesByUserId(
+            @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam("userId") Integer userId
     ) {
-        List<ActivityResponse> activities = activityService.getActivitiesByUserId(userId);
+        List<ActivityResponse> activities = activityService.getActivitiesByUserId(principal, userId);
         return ResponseEntity.ok(ApiResponse.success("사용자 활동 조회 성공", activities));
     }
 

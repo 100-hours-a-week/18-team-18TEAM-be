@@ -1,5 +1,6 @@
 package com.caro.bizkit.domain.userdetail.link.service;
 
+import com.caro.bizkit.common.security.CardCollectionValidator;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.user.entity.User;
 import com.caro.bizkit.domain.user.repository.UserRepository;
@@ -23,6 +24,7 @@ public class LinkService {
 
     private final LinkRepository linkRepository;
     private final UserRepository userRepository;
+    private final CardCollectionValidator cardCollectionValidator;
 
     @Transactional(readOnly = true)
     public List<LinkResponse> getMyLinks(UserPrincipal principal) {
@@ -32,7 +34,8 @@ public class LinkService {
     }
 
     @Transactional(readOnly = true)
-    public List<LinkResponse> getLinksByUserId(Integer userId) {
+    public List<LinkResponse> getLinksByUserId(UserPrincipal principal, Integer userId) {
+        cardCollectionValidator.validateAccess(principal.id(), userId);
         return linkRepository.findAllByUserId(userId).stream()
                 .map(LinkResponse::from)
                 .toList();
