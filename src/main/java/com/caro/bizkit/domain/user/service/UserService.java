@@ -1,6 +1,7 @@
 package com.caro.bizkit.domain.user.service;
 
 import com.caro.bizkit.common.S3.service.S3Service;
+import com.caro.bizkit.common.security.CardCollectionValidator;
 import com.caro.bizkit.domain.ai.event.UserProfileUpdatedEvent;
 import com.caro.bizkit.domain.auth.entity.Account;
 import com.caro.bizkit.domain.auth.entity.OAuth;
@@ -39,6 +40,7 @@ public class UserService {
     private final KakaoOAuthProperties kakaoOAuthProperties;
     private final ApplicationEventPublisher eventPublisher;
     private final UserCardRepository userCardRepository;
+    private final CardCollectionValidator cardCollectionValidator;
     private final UserSkillRepository userSkillRepository;
     private final AiUsageRepository aiUsageRepository;
 
@@ -55,16 +57,7 @@ public class UserService {
         User user = userRepository.findByIdAndDeletedAtIsNull(userId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다"));
 
-        // 자기 자신의 프로필은 조회 가능
-        if (principal.id().equals(userId)) {
-            return toResponse(user);
-        }
-
-        // 수집한 카드의 주인인지 확인
-        boolean hasCollectedCard = userCardRepository.existsCollectedCardByOwner(principal.id(), userId);
-        if (!hasCollectedCard) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다");
-        }
+        cardCollectionValidator.validateAccess(principal.id(), userId);
 
         return toResponse(user);
     }

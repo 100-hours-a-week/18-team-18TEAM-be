@@ -1,5 +1,6 @@
 package com.caro.bizkit.domain.userdetail.project.service;
 
+import com.caro.bizkit.common.security.CardCollectionValidator;
 import com.caro.bizkit.domain.ai.event.UserProfileUpdatedEvent;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.user.entity.User;
@@ -29,6 +30,7 @@ public class ProjectService {
     private final ProjectRepository projectRepository;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final CardCollectionValidator cardCollectionValidator;
 
     @Transactional(readOnly = true)
     public List<ProjectResponse> getMyProjects(UserPrincipal principal) {
@@ -38,7 +40,8 @@ public class ProjectService {
     }
 
     @Transactional(readOnly = true)
-    public List<ProjectResponse> getProjectsByUserId(Integer userId) {
+    public List<ProjectResponse> getProjectsByUserId(UserPrincipal principal, Integer userId) {
+        cardCollectionValidator.validateAccess(principal.id(), userId);
         return projectRepository.findAllByUserId(userId).stream()
                 .map(ProjectResponse::from)
                 .toList();
