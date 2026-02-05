@@ -9,13 +9,13 @@ import org.springframework.stereotype.Component;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class UserProfileUpdateListener {
+public class CardInfoUpdateListener {
 
     private final AiAnalysisService aiAnalysisService;
 
     @EventListener
-    public void handleUserProfileUpdated(UserProfileUpdatedEvent event) {
-        log.info("Received UserProfileUpdatedEvent: userId={}, type={}", event.userId(), event.updateType());
-        aiAnalysisService.addToBatch(event.userId());
+    public void handleCardInfoUpdated(CardInfoUpdatedEvent event) {
+        log.info("Received CardInfoUpdatedEvent: cardId={}, type={}", event.resourceId(), event.updateType());
+        aiAnalysisService.addToBatch(event.resourceId());
     }
 }

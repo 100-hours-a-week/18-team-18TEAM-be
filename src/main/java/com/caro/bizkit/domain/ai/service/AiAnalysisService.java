@@ -6,6 +6,8 @@ import com.caro.bizkit.domain.ai.dto.AiJobAnalyzeRequest;
 import com.caro.bizkit.domain.ai.dto.AiJobAnalyzeResponse;
 import com.caro.bizkit.domain.ai.entity.AiAnalysisTask;
 import com.caro.bizkit.domain.ai.repository.AiAnalysisTaskRepository;
+import com.caro.bizkit.domain.card.entity.Card;
+import com.caro.bizkit.domain.card.repository.CardRepository;
 import com.caro.bizkit.domain.user.entity.User;
 import com.caro.bizkit.domain.user.repository.UserRepository;
 import com.caro.bizkit.domain.userdetail.activity.entity.Activity;
@@ -31,74 +33,78 @@ import java.util.concurrent.ConcurrentHashMap;
 @Slf4j
 public class AiAnalysisService {
 
-    private final ConcurrentHashMap<Integer, LocalDateTime> pendingUsers = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<Integer, LocalDateTime> pendingCards = new ConcurrentHashMap<>();
 
     private final AiAnalysisClient aiClient;
     private final UserRepository userRepository;
+    private final CardRepository cardRepository;
     private final ProjectRepository projectRepository;
     private final ActivityRepository activityRepository;
     private final AiAnalysisTaskRepository taskRepository;
     private final TransactionTemplate transactionTemplate;
 
-    public void addToBatch(Integer userId) {
-        pendingUsers.put(userId, LocalDateTime.now());
-        log.info("Adding user to batch: {}", userId);
+    public void addToBatch(Integer cardId) {
+        pendingCards.put(cardId, LocalDateTime.now());
+        log.info("Adding card to batch: {}", cardId);
     }
 
     @Scheduled(fixedDelay = 300000)
     public void processBatch() {
-        Set<Integer> userIds = new HashSet<>(pendingUsers.keySet());
-        pendingUsers.clear();
+        Set<Integer> cardIds = new HashSet<>(pendingCards.keySet());
+        pendingCards.clear();
 
-        if (userIds.isEmpty()) {
+        if (cardIds.isEmpty()) {
             return;
         }
 
-        log.info("Processing batch: {} users", userIds.size());
+        log.info("Processing batch: {} cards", cardIds.size());
 
-        for (Integer userId : userIds) {
-            processUserWithTransaction(userId);
+        for (Integer cardId : cardIds) {
+            processCardWithTransaction(cardId);
         }
     }
 
-    private void processUserWithTransaction(Integer userId) {
+    private void processCardWithTransaction(Integer cardId) {
         transactionTemplate.executeWithoutResult(status -> {
             AiAnalysisTask task = null;
             try {
-                User user = userRepository.findByIdAndDeletedAtIsNull(userId).orElseThrow();
+                Card card = cardRepository.findById(cardId)
+                        .orElseThrow();
+                User user = card.getUser();
+                Integer userId = user.getId();
                 List<Project> projects = projectRepository.findAllByUserId(userId);
                 List<Activity> activities = activityRepository.findAllByUserId(userId);
 
                 task = AiAnalysisTask.create(user);
                 taskRepository.save(task);
 
-                AiJobAnalyzeRequest request = buildRequest(user, projects, activities);
+                AiJobAnalyzeRequest request = buildRequest(card, projects, activities);
                 AiJobAnalyzeResponse response = aiClient.analyzeSync(request);
 
                 if (response != null && response.data() != null) {
-                    user.updateDescription(response.data().introduction());
+                    card.updateDescription(response.data().introduction());
                     task.complete();
-                    log.info("AI analysis completed for user: {}", userId);
+                    log.info("AI analysis completed for card: {}", cardId);
                 } else {
                     task.fail();
-                    log.warn("AI analysis returned empty response for user: {}", userId);
+                    log.warn("AI analysis returned empty response for card: {}", cardId);
                 }
             } catch (CustomException e) {
                 if (task != null) {
                     task.fail();
                 }
-                log.error("AI server error for user {}: status={}, message={}",
-                        userId, e.getStatus(), e.getMessage());
+                log.error("AI server error for card {}: status={}, message={}",
+                        cardId, e.getStatus(), e.getMessage());
             } catch (Exception e) {
                 if (task != null) {
                     task.fail();
                 }
-                log.error("AI analysis failed for user: {}", userId, e);
+                log.error("AI analysis failed for card: {}", cardId, e);
             }
         });
     }
 
-    private AiJobAnalyzeRequest buildRequest(User user, List<Project> projects, List<Activity> activities) {
+    private AiJobAnalyzeRequest buildRequest(Card card, List<Project> projects, List<Activity> activities) {
         List<AiJobAnalyzeRequest.ProjectDto> projectDtos = projects.stream()
                 .map(this::toProjectDto)
                 .toList();
@@ -108,11 +114,11 @@ public class AiAnalysisService {
                 .toList();
 
         return new AiJobAnalyzeRequest(
-                user.getId(),
-                user.getName(),
-                user.getCompany(),
-                user.getDepartment(),
-                user.getPosition(),
+                card.getId(),
+                card.getName(),
+                card.getCompany(),
+                card.getDepartment(),
+                card.getPosition(),
                 projectDtos,
                 awardDtos
         );

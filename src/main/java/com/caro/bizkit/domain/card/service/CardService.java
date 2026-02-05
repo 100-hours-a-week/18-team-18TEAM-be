@@ -1,9 +1,12 @@
 package com.caro.bizkit.domain.card.service;
 
+import com.caro.bizkit.domain.ai.event.CardInfoUpdatedEvent;
 import com.caro.bizkit.domain.card.dto.CardRequest;
 import com.caro.bizkit.domain.card.dto.CardResponse;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.time.YearMonth;
+import org.springframework.util.StringUtils;
 import java.util.Map;
 import java.util.function.Consumer;
 import com.caro.bizkit.domain.card.entity.Card;
@@ -13,6 +16,7 @@ import com.caro.bizkit.domain.user.repository.UserRepository;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
@@ -25,10 +29,11 @@ public class CardService {
 
     private final CardRepository cardRepository;
     private final UserRepository userRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public List<CardResponse> getCardsByUserId(Integer userId) {
-        return cardRepository.findAllByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(userId).stream()
+        return cardRepository.findAllByUserIdAndDeletedAtIsNullOrderByStartDateDesc(userId).stream()
                 .map(CardResponse::from)
                 .toList();
     }
@@ -49,14 +54,14 @@ public class CardService {
 
     @Transactional(readOnly = true)
     public List<CardResponse> getMyCards(UserPrincipal principal) {
-        return cardRepository.findAllByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(principal.id()).stream()
+        return cardRepository.findAllByUserIdAndDeletedAtIsNullOrderByStartDateDesc(principal.id()).stream()
                 .map(CardResponse::from)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public CardResponse getMyLatestCard(UserPrincipal principal) {
-        Card card = cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(principal.id())
+        Card card = cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByStartDateDesc(principal.id())
                 .orElse(null);
         return null == card ? null : CardResponse.from(card);
     }
@@ -79,6 +84,13 @@ public class CardService {
                 request.ai_image_key()
         );
         Card saved = cardRepository.save(card);
+
+        if (hasJobInfo(saved)) {
+            eventPublisher.publishEvent(new CardInfoUpdatedEvent(
+                    saved.getId(), "CARD", LocalDateTime.now()
+            ));
+        }
+
         return CardResponse.from(saved);
     }
 
@@ -97,15 +109,37 @@ public class CardService {
         }
 
         applyUpdates(card, request);
+
+        if (hasJobInfo(card)) {
+            eventPublisher.publishEvent(new CardInfoUpdatedEvent(
+                    card.getId(), "CARD", LocalDateTime.now()
+            ));
+        }
+
         return CardResponse.from(card);
     }
 
     private void applyUpdates(Card card, Map<String, Object> request) {
-        applyIfPresent(request, "name", card::updateName);
+        applyIfPresent(request, "name", value -> {
+            if (!value.matches("^[^\\p{P}\\p{S}\\p{Z}\\p{N}\\p{C}]+$")) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "이름 형식이 올바르지 않습니다");
+            }
+            card.updateName(value);
+        });
         applyIfPresent(request, "email", card::updateEmail);
-        applyIfPresent(request, "phone_number", card::updatePhoneNumber);
+        applyIfPresent(request, "phone_number", value -> {
+            if (!value.matches("^010-\\d{4}-\\d{4}$")) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "전화번호 형식이 올바르지 않습니다");
+            }
+            card.updatePhoneNumber(value);
+        });
         applyIfPresent(request, "lined_number", card::updateLinedNumber);
-        applyIfPresent(request, "company", card::updateCompany);
+        applyIfPresent(request, "company", value -> {
+            if (!value.matches("^[가-힣a-zA-Z0-9\\s()&.]+$")) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "회사명 형식이 올바르지 않습니다");
+            }
+            card.updateCompany(value);
+        });
         applyIfPresent(request, "position", card::updatePosition);
         applyIfPresent(request, "department", card::updateDepartment);
         applyDateIfPresent(request, "start_date", card::updateStartDate);
@@ -147,6 +181,12 @@ public class CardService {
                 updater.accept(parseDate((String) value));
             }
         }
+    }
+
+    private boolean hasJobInfo(Card card) {
+        return StringUtils.hasText(card.getCompany())
+                && StringUtils.hasText(card.getPosition())
+                && StringUtils.hasText(card.getDepartment());
     }
 
     private LocalDate parseDate(String value) {
