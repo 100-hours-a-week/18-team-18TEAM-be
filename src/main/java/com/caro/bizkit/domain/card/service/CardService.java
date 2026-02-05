@@ -122,7 +122,12 @@ public class CardService {
     private void applyUpdates(Card card, Map<String, Object> request) {
         applyIfPresent(request, "name", card::updateName);
         applyIfPresent(request, "email", card::updateEmail);
-        applyIfPresent(request, "phone_number", card::updatePhoneNumber);
+        applyIfPresent(request, "phone_number", value -> {
+            if (!value.matches("^010-\\d{4}-\\d{4}$")) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "전화번호 형식이 올바르지 않습니다");
+            }
+            card.updatePhoneNumber(value);
+        });
         applyIfPresent(request, "lined_number", card::updateLinedNumber);
         applyIfPresent(request, "company", card::updateCompany);
         applyIfPresent(request, "position", card::updatePosition);
