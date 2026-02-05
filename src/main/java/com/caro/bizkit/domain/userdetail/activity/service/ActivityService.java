@@ -1,7 +1,7 @@
 package com.caro.bizkit.domain.userdetail.activity.service;
 
 import com.caro.bizkit.common.security.CardCollectionValidator;
-import com.caro.bizkit.domain.ai.event.UserProfileUpdatedEvent;
+import com.caro.bizkit.domain.ai.event.CardInfoUpdatedEvent;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.user.entity.User;
 import com.caro.bizkit.domain.user.repository.UserRepository;
@@ -59,7 +59,7 @@ public class ActivityService {
         );
         Activity saved = activityRepository.save(activity);
 
-        eventPublisher.publishEvent(new UserProfileUpdatedEvent(
+        eventPublisher.publishEvent(new CardInfoUpdatedEvent(
                 principal.id(), "ACTIVITY", LocalDateTime.now()
         ));
 
@@ -82,7 +82,7 @@ public class ActivityService {
 
         applyUpdates(activity, request);
 
-        eventPublisher.publishEvent(new UserProfileUpdatedEvent(
+        eventPublisher.publishEvent(new CardInfoUpdatedEvent(
                 principal.id(), "ACTIVITY", LocalDateTime.now()
         ));
 
@@ -121,7 +121,7 @@ public class ActivityService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Activity not found"));
         activityRepository.delete(activity);
 
-        eventPublisher.publishEvent(new UserProfileUpdatedEvent(
+        eventPublisher.publishEvent(new CardInfoUpdatedEvent(
                 principal.id(), "ACTIVITY", LocalDateTime.now()
         ));
     }
