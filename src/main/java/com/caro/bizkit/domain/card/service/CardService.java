@@ -33,7 +33,7 @@ public class CardService {
 
     @Transactional(readOnly = true)
     public List<CardResponse> getCardsByUserId(Integer userId) {
-        return cardRepository.findAllByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(userId).stream()
+        return cardRepository.findAllByUserIdAndDeletedAtIsNullOrderByStartDateDesc(userId).stream()
                 .map(CardResponse::from)
                 .toList();
     }
@@ -54,14 +54,14 @@ public class CardService {
 
     @Transactional(readOnly = true)
     public List<CardResponse> getMyCards(UserPrincipal principal) {
-        return cardRepository.findAllByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(principal.id()).stream()
+        return cardRepository.findAllByUserIdAndDeletedAtIsNullOrderByStartDateDesc(principal.id()).stream()
                 .map(CardResponse::from)
                 .toList();
     }
 
     @Transactional(readOnly = true)
     public CardResponse getMyLatestCard(UserPrincipal principal) {
-        Card card = cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(principal.id())
+        Card card = cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByStartDateDesc(principal.id())
                 .orElse(null);
         return null == card ? null : CardResponse.from(card);
     }

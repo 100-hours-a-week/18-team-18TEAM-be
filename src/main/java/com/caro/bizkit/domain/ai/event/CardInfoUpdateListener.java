@@ -25,7 +25,7 @@ public class CardInfoUpdateListener {
         if ("CARD".equals(event.updateType())) {
             aiAnalysisService.addToBatch(event.resourceId());
         } else {
-            Optional<Card> card = cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByCreatedAtDesc(event.resourceId());
+            Optional<Card> card = cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByStartDateDesc(event.resourceId());
             if (card.isPresent()) {
                 aiAnalysisService.addToBatch(card.get().getId());
             } else {
