@@ -67,6 +67,9 @@ public class Card extends BaseTimeEntity {
     @Column(length = 500)
     private String aiImageKey;
 
+    @Column(length = 500)
+    private String description;
+
     public static Card create(
             User user,
             String uuid,
@@ -79,7 +82,8 @@ public class Card extends BaseTimeEntity {
             String department,
             LocalDate startDate,
             LocalDate endDate,
-            String aiImageKey
+            String aiImageKey,
+            String description
     ) {
         Card card = new Card();
         card.user = user;
@@ -95,6 +99,7 @@ public class Card extends BaseTimeEntity {
         card.endDate = endDate;
         card.isProgress = (endDate == null);
         card.aiImageKey = aiImageKey;
+        card.description = description;
         return card;
     }
 
@@ -152,5 +157,9 @@ public class Card extends BaseTimeEntity {
 
     public void updateAiImageKey(String aiImageKey) {
         this.aiImageKey = aiImageKey;
+    }
+
+    public void updateDescription(String description) {
+        this.description = description;
     }
 }
