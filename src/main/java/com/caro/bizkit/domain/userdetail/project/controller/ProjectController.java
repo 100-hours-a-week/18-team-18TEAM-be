@@ -52,9 +52,10 @@ public class ProjectController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
     })
     public ResponseEntity<ApiResponse<List<ProjectResponse>>> getProjectsByUserId(
+            @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam("userId") Integer userId
     ) {
-        List<ProjectResponse> projects = projectService.getProjectsByUserId(userId);
+        List<ProjectResponse> projects = projectService.getProjectsByUserId(principal, userId);
         return ResponseEntity.ok(ApiResponse.success("사용자 프로젝트 조회 성공", projects));
     }
 

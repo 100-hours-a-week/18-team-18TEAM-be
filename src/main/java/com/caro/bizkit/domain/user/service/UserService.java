@@ -1,6 +1,7 @@
 package com.caro.bizkit.domain.user.service;
 
 import com.caro.bizkit.common.S3.service.S3Service;
+import com.caro.bizkit.common.security.CardCollectionValidator;
 import com.caro.bizkit.domain.ai.event.UserProfileUpdatedEvent;
 import com.caro.bizkit.domain.auth.entity.Account;
 import com.caro.bizkit.domain.auth.entity.OAuth;
@@ -39,6 +40,7 @@ public class UserService {
     private final KakaoOAuthProperties kakaoOAuthProperties;
     private final ApplicationEventPublisher eventPublisher;
     private final UserCardRepository userCardRepository;
+    private final CardCollectionValidator cardCollectionValidator;
     private final UserSkillRepository userSkillRepository;
     private final AiUsageRepository aiUsageRepository;
 
@@ -51,12 +53,12 @@ public class UserService {
     }
 
     @Transactional(readOnly = true)
-    public UserResponse getUserProfile(Integer userId) {
+    public UserResponse getUserProfile(UserPrincipal principal, Integer userId) {
         User user = userRepository.findByIdAndDeletedAtIsNull(userId)
-                .orElse(null);
-        if (user == null) {
-            return null;
-        }
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다"));
+
+        cardCollectionValidator.validateAccess(principal.id(), userId);
+
         return toResponse(user);
     }
 

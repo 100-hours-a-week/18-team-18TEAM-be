@@ -50,9 +50,10 @@ public class LinkController {
             @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
     })
     public ResponseEntity<ApiResponse<List<LinkResponse>>> getLinksByUserId(
+            @AuthenticationPrincipal UserPrincipal principal,
             @RequestParam("userId") Integer userId
     ) {
-        List<LinkResponse> links = linkService.getLinksByUserId(userId);
+        List<LinkResponse> links = linkService.getLinksByUserId(principal, userId);
         return ResponseEntity.ok(ApiResponse.success("사용자 링크 조회 성공", links));
     }
 

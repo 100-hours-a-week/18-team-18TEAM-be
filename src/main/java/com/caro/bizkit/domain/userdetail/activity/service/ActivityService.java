@@ -1,5 +1,6 @@
 package com.caro.bizkit.domain.userdetail.activity.service;
 
+import com.caro.bizkit.common.security.CardCollectionValidator;
 import com.caro.bizkit.domain.ai.event.UserProfileUpdatedEvent;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.user.entity.User;
@@ -28,6 +29,7 @@ public class ActivityService {
     private final ActivityRepository activityRepository;
     private final UserRepository userRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final CardCollectionValidator cardCollectionValidator;
 
     @Transactional(readOnly = true)
     public List<ActivityResponse> getMyActivities(UserPrincipal principal) {
@@ -37,7 +39,8 @@ public class ActivityService {
     }
 
     @Transactional(readOnly = true)
-    public List<ActivityResponse> getActivitiesByUserId(Integer userId) {
+    public List<ActivityResponse> getActivitiesByUserId(UserPrincipal principal, Integer userId) {
+        cardCollectionValidator.validateAccess(principal.id(), userId);
         return activityRepository.findAllByUserId(userId).stream()
                 .map(ActivityResponse::from)
                 .toList();

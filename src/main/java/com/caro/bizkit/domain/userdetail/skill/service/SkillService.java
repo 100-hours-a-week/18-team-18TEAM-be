@@ -1,5 +1,6 @@
 package com.caro.bizkit.domain.userdetail.skill.service;
 
+import com.caro.bizkit.common.security.CardCollectionValidator;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.user.entity.User;
 import com.caro.bizkit.domain.user.repository.UserRepository;
@@ -24,6 +25,7 @@ public class SkillService {
     private final SkillRepository skillRepository;
     private final UserSkillRepository userSkillRepository;
     private final UserRepository userRepository;
+    private final CardCollectionValidator cardCollectionValidator;
 
     @Transactional(readOnly = true)
     public List<SkillResponse> getAllSkills() {
@@ -40,7 +42,8 @@ public class SkillService {
     }
 
     @Transactional(readOnly = true)
-    public List<SkillResponse> getSkillsByUserId(Integer userId) {
+    public List<SkillResponse> getSkillsByUserId(UserPrincipal principal, Integer userId) {
+        cardCollectionValidator.validateAccess(principal.id(), userId);
         return userSkillRepository.findAllByUserId(userId).stream()
                 .map(userSkill -> SkillResponse.from(userSkill.getSkill()))
                 .toList();
