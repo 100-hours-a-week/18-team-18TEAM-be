@@ -1,14 +1,14 @@
 package com.caro.bizkit.domain.card.repository;
 
-import com.caro.bizkit.common.baserepository.BaseRepository;
 import com.caro.bizkit.domain.card.entity.UserCard;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface UserCardRepository extends BaseRepository<UserCard, Integer> {
+public interface UserCardRepository extends JpaRepository<UserCard, Integer> {
     boolean existsByUserIdAndCardId(Integer userId, Integer cardId);
     List<UserCard> findAllByUserId(Integer userId);
     Optional<UserCard> findByUserIdAndCardId(Integer userId, Integer cardId);

@@ -11,7 +11,6 @@ import com.caro.bizkit.domain.userdetail.skill.entity.UserSkill;
 import com.caro.bizkit.domain.userdetail.skill.repository.SkillRepository;
 import com.caro.bizkit.domain.userdetail.skill.repository.UserSkillRepository;
 import java.util.List;
-import java.util.stream.StreamSupport;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -29,7 +28,7 @@ public class SkillService {
 
     @Transactional(readOnly = true)
     public List<SkillResponse> getAllSkills() {
-        return StreamSupport.stream(skillRepository.findAll().spliterator(), false)
+        return skillRepository.findAll().stream()
                 .map(SkillResponse::from)
                 .toList();
     }
@@ -67,9 +66,7 @@ public class SkillService {
             return List.of();
         }
 
-        List<Skill> skills = StreamSupport.stream(
-                skillRepository.findAllById(request.skillIds()).spliterator(), false
-        ).toList();
+        List<Skill> skills = skillRepository.findAllById(request.skillIds());
 
         if (skills.size() != request.skillIds().size()) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid skill id included");
