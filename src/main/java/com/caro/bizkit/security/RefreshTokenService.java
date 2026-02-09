@@ -6,9 +6,11 @@ import java.security.NoSuchAlgorithmException;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class RefreshTokenService {
@@ -32,6 +34,7 @@ public class RefreshTokenService {
         String lookupKey = LOOKUP_KEY_PREFIX + hashedToken;
         redisTemplate.opsForValue().set(lookupKey, String.valueOf(userId), ttl, TimeUnit.SECONDS);
 
+        log.info("RefreshToken 생성: userId={}, userKey={}, lookupKey={}, hashedToken={}", userId, userKey, lookupKey, hashedToken);
         return refreshToken;
     }
 
@@ -39,8 +42,11 @@ public class RefreshTokenService {
         String hashedToken = hashToken(refreshToken);
         String lookupKey = LOOKUP_KEY_PREFIX + hashedToken;
 
+        log.info("RefreshToken 검증 시작: rawToken={}, lookupKey={}, hashedToken={}", refreshToken, lookupKey, hashedToken);
+
         String userIdStr = redisTemplate.opsForValue().get(lookupKey);
         if (userIdStr == null) {
+            log.warn("RefreshToken 검증 실패: lookupKey에 해당하는 userId 없음. lookupKey={}", lookupKey);
             return null;
         }
 
@@ -48,7 +54,10 @@ public class RefreshTokenService {
         String userKey = USER_KEY_PREFIX + userId;
         String storedHash = redisTemplate.opsForValue().get(userKey);
 
+        log.info("RefreshToken 검증: userId={}, userKey={}, storedHash={}, hashedToken 일치={}", userId, userKey, storedHash, hashedToken.equals(storedHash));
+
         if (storedHash == null || !storedHash.equals(hashedToken)) {
+            log.warn("RefreshToken 검증 실패: 해시 불일치. userId={}, storedHash={}, hashedToken={}", userId, storedHash, hashedToken);
             return null;
         }
 
@@ -58,6 +67,8 @@ public class RefreshTokenService {
     public void deleteRefreshToken(Integer userId) {
         String userKey = USER_KEY_PREFIX + userId;
         String storedHash = redisTemplate.opsForValue().get(userKey);
+
+        log.info("RefreshToken 삭제: userId={}, userKey={}, storedHash={}", userId, userKey, storedHash);
 
         if (storedHash != null) {
             String lookupKey = LOOKUP_KEY_PREFIX + storedHash;
