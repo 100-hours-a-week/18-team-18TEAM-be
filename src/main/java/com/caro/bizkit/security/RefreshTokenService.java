@@ -34,7 +34,13 @@ public class RefreshTokenService {
         String lookupKey = LOOKUP_KEY_PREFIX + hashedToken;
         redisTemplate.opsForValue().set(lookupKey, String.valueOf(userId), ttl, TimeUnit.SECONDS);
 
+        // 쓰기 직후 검증
+        String verifyUser = redisTemplate.opsForValue().get(userKey);
+        String verifyLookup = redisTemplate.opsForValue().get(lookupKey);
+        Long verifyTtl = redisTemplate.getExpire(lookupKey, TimeUnit.SECONDS);
         log.info("RefreshToken 생성: userId={}, userKey={}, lookupKey={}, hashedToken={}", userId, userKey, lookupKey, hashedToken);
+        log.info("RefreshToken 쓰기 검증: userKey 존재={}, lookupKey 존재={}, lookupKey TTL={}초", verifyUser != null, verifyLookup != null, verifyTtl);
+
         return refreshToken;
     }
 
