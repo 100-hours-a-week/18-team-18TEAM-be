@@ -1,7 +1,7 @@
 package com.caro.bizkit.domain.chat.repository;
 
-import com.caro.bizkit.common.baserepository.BaseRepository;
 import com.caro.bizkit.domain.chat.entity.ChatMessage;
+import org.springframework.data.jpa.repository.JpaRepository;
 
-public interface ChatMessageRepository extends BaseRepository<ChatMessage, Long> {
+public interface ChatMessageRepository extends JpaRepository<ChatMessage, Long> {
 }
