@@ -197,6 +197,7 @@ public class AuthController {
     }
 
     private void clearAuthCookies(HttpServletResponse response) {
+        response.addHeader("Clear-Site-Data", "\"cookies\"");
         ResponseCookie deleteAccess = ResponseCookie.from("accessToken", "")
                 .httpOnly(true)
                 .secure(cookieSecure)
