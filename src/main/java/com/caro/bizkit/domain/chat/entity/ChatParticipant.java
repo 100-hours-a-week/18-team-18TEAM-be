@@ -7,7 +7,10 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "chat_participant")
+@Table(name = "chat_participant", indexes = {
+        @Index(name = "idx_chat_participant_user_room", columnList = "user_id, room_id"),
+        @Index(name = "idx_chat_participant_room_left", columnList = "room_id, left_at")
+})
 public class ChatParticipant {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
@@ -28,7 +31,7 @@ public class ChatParticipant {
     private LocalDateTime leftAt;
 
     @Column(nullable = false)
-    private Integer unreadCount; // SMALLINT -> Integer
+    private Integer unreadCount = 0; // SMALLINT -> Integer
 
     public void setUser(User user) {
         this.user = user;
