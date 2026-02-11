@@ -36,6 +36,7 @@ public class UserController {
         this.userService = userService;
         this.cookieSecure = cookieSecure;
         this.cookieSameSite = cookieSameSite;
+
     }
 
     @GetMapping("/me")
@@ -85,22 +86,19 @@ public class UserController {
     }
 
     private void clearAuthCookies(HttpServletResponse response) {
-        response.addHeader("Clear-Site-Data", "\"cookies\"");
-        ResponseCookie deleteAccess = ResponseCookie.from("accessToken", "")
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .sameSite(cookieSameSite)
-                .path("/")
-                .maxAge(0)
-                .build();
-        ResponseCookie deleteRefresh = ResponseCookie.from("refreshToken", "")
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .sameSite(cookieSameSite)
-                .path("/")
-                .maxAge(0)
-                .build();
+        ResponseCookie deleteAccess = buildCookie("accessToken", "", 0);
+        ResponseCookie deleteRefresh = buildCookie("refreshToken", "", 0);
         response.addHeader(HttpHeaders.SET_COOKIE, deleteAccess.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, deleteRefresh.toString());
+    }
+
+    private ResponseCookie buildCookie(String name, String value, long maxAge) {
+        return ResponseCookie.from(name, value)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
+                .path("/")
+                .maxAge(maxAge)
+                .build();
     }
 }

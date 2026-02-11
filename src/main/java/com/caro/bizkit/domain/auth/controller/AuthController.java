@@ -84,21 +84,8 @@ public class AuthController {
         clearAuthCookies(response);
 
         // 새 쿠키 발급
-        ResponseCookie accessCookie = ResponseCookie.from("accessToken", tokenPair.accessToken())
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .sameSite(cookieSameSite)
-                .path("/")
-                .maxAge(jwtProperties.getAccessTokenValiditySeconds())
-                .build();
-
-        ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", tokenPair.refreshToken())
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .sameSite(cookieSameSite)
-                .path("/")
-                .maxAge(refreshTokenService.getRefreshTokenValiditySeconds())
-                .build();
+        ResponseCookie accessCookie = buildCookie("accessToken", tokenPair.accessToken(), jwtProperties.getAccessTokenValiditySeconds());
+        ResponseCookie refreshCookie = buildCookie("refreshToken", tokenPair.refreshToken(), refreshTokenService.getRefreshTokenValiditySeconds());
 
         response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
@@ -133,21 +120,8 @@ public class AuthController {
 
             clearAuthCookies(response);
 
-            ResponseCookie accessCookie = ResponseCookie.from("accessToken", tokenPair.accessToken())
-                    .httpOnly(true)
-                    .secure(cookieSecure)
-                    .sameSite(cookieSameSite)
-                    .path("/")
-                    .maxAge(jwtProperties.getAccessTokenValiditySeconds())
-                    .build();
-
-            ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", tokenPair.refreshToken())
-                    .httpOnly(true)
-                    .secure(cookieSecure)
-                    .sameSite(cookieSameSite)
-                    .path("/")
-                    .maxAge(refreshTokenService.getRefreshTokenValiditySeconds())
-                    .build();
+            ResponseCookie accessCookie = buildCookie("accessToken", tokenPair.accessToken(), jwtProperties.getAccessTokenValiditySeconds());
+            ResponseCookie refreshCookie = buildCookie("refreshToken", tokenPair.refreshToken(), refreshTokenService.getRefreshTokenValiditySeconds());
 
             response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
             response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
@@ -197,22 +171,19 @@ public class AuthController {
     }
 
     private void clearAuthCookies(HttpServletResponse response) {
-        response.addHeader("Clear-Site-Data", "\"cookies\"");
-        ResponseCookie deleteAccess = ResponseCookie.from("accessToken", "")
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .sameSite(cookieSameSite)
-                .path("/")
-                .maxAge(0)
-                .build();
-        ResponseCookie deleteRefresh = ResponseCookie.from("refreshToken", "")
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .sameSite(cookieSameSite)
-                .path("/")
-                .maxAge(0)
-                .build();
+        ResponseCookie deleteAccess = buildCookie("accessToken", "", 0);
+        ResponseCookie deleteRefresh = buildCookie("refreshToken", "", 0);
         response.addHeader(HttpHeaders.SET_COOKIE, deleteAccess.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, deleteRefresh.toString());
+    }
+
+    private ResponseCookie buildCookie(String name, String value, long maxAge) {
+        return ResponseCookie.from(name, value)
+                .httpOnly(true)
+                .secure(cookieSecure)
+                .sameSite(cookieSameSite)
+                .path("/")
+                .maxAge(maxAge)
+                .build();
     }
 }
