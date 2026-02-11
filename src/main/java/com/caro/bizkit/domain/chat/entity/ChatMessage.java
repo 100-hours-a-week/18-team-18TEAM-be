@@ -7,7 +7,9 @@ import java.time.LocalDateTime;
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(name = "chat_message")
+@Table(name = "chat_message", indexes = {
+        @Index(name = "idx_chat_message_room_id", columnList = "room_id, id")
+})
 public class ChatMessage {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id; // BIGINT
