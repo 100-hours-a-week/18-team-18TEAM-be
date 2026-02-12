@@ -1,4 +1,4 @@
-package com.caro.bizkit.common.config;
+package com.caro.bizkit.domain.chat.config;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
