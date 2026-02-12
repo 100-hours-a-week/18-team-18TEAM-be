@@ -1,6 +1,6 @@
 package com.caro.bizkit.domain.chat.service;
 
-import com.caro.bizkit.domain.chat.dto.RedisChatMessage;
+import com.caro.bizkit.domain.chat.dto.ChatMessageResponse;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -18,7 +18,7 @@ public class ChatRedisPublisher {
     private final ChannelTopic chatMessageTopic;
     private final ObjectMapper objectMapper;
 
-    public void publish(RedisChatMessage message) {
+    public void publish(ChatMessageResponse message) {
         try {
             String json = objectMapper.writeValueAsString(message);
             redisTemplate.convertAndSend(chatMessageTopic.getTopic(), json);

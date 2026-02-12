@@ -2,7 +2,6 @@ package com.caro.bizkit.domain.chat.controller;
 
 import com.caro.bizkit.domain.chat.dto.ChatMessageRequest;
 import com.caro.bizkit.domain.chat.dto.ChatMessageResponse;
-import com.caro.bizkit.domain.chat.dto.RedisChatMessage;
 import com.caro.bizkit.domain.chat.service.ChatMessageService;
 import com.caro.bizkit.domain.chat.service.ChatRedisPublisher;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
@@ -47,6 +46,6 @@ public class ChatStompController {
         ChatMessageResponse response = chatMessageService.sendMessage(userPrincipal, request);
 
         // Redis publish (모든 인스턴스에 브로드캐스트)
-        chatRedisPublisher.publish(RedisChatMessage.from(response));
+        chatRedisPublisher.publish(response);
     }
 }

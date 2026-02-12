@@ -1,4 +1,4 @@
-package com.caro.bizkit.common.config;
+package com.caro.bizkit.domain.chat.config;
 
 import com.caro.bizkit.domain.chat.service.ChatRedisSubscriber;
 import org.springframework.context.annotation.Bean;
