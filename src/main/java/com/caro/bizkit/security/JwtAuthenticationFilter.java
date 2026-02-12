@@ -49,6 +49,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 path.equals("/api/auth/rotation") ||
                 path.equals("/api/auth/kakao/callback") ||
                 path.startsWith("/api/cards/uuid/") ||
+                path.startsWith("/ws") ||
                 path.equals("/error");
     }
 
