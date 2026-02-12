@@ -75,12 +75,12 @@ public class WalletService {
 
     private List<UserCard> findUserCards(Integer userId, Integer cursorId, String keyword, int limit) {
         if (StringUtils.hasText(keyword)) {
-            return userCardRepository.searchCollectedCards(
-                    userId,
-                    cursorId,
-                    keyword,
-                    PageRequest.of(0, limit)
-            );
+            if (cursorId == null) {
+                return userCardRepository.searchCollectedCards(
+                        userId, keyword, PageRequest.of(0, limit));
+            }
+            return userCardRepository.searchCollectedCardsWithCursor(
+                    userId, cursorId, keyword, PageRequest.of(0, limit));
         }
         if (cursorId == null) {
             return userCardRepository.findByUserIdOrderByCreatedAtDescIdDesc(userId, PageRequest.of(0, limit));
