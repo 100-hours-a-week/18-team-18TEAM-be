@@ -60,7 +60,10 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException
     {
-        String token = extractTokenFromCookie(request);
+        String token = extractTokenFromHeader(request);
+        if (token == null) {
+            token = extractTokenFromCookie(request);
+        }
         if (token == null) {
             filterChain.doFilter(request, response);
             return;
@@ -104,6 +107,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         SecurityContextHolder.getContext().setAuthentication(authentication);
 
         filterChain.doFilter(request, response);
+    }
+
+    private String extractTokenFromHeader(HttpServletRequest request) {
+        String bearer = request.getHeader("Authorization");
+        if (bearer != null && bearer.startsWith("Bearer ")) {
+            return bearer.substring(7);
+        }
+        return null;
     }
 
     private String extractTokenFromCookie(HttpServletRequest request) {
