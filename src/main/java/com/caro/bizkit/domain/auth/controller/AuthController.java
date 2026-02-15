@@ -2,6 +2,7 @@ package com.caro.bizkit.domain.auth.controller;
 
 import com.caro.bizkit.common.ApiResponse.ApiResponse;
 import com.caro.bizkit.domain.auth.dto.LoginRequest;
+import com.caro.bizkit.domain.auth.dto.RefreshRequest;
 import com.caro.bizkit.domain.auth.dto.TokenPair;
 import com.caro.bizkit.domain.auth.service.AuthService;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
@@ -89,7 +90,7 @@ public class AuthController {
 
         response.addHeader(HttpHeaders.SET_COOKIE, accessCookie.toString());
         response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
-        return ResponseEntity.ok().body(ApiResponse.success("로그인 성공", null));
+        return ResponseEntity.ok().body(ApiResponse.success("로그인 성공", tokenPair));
     }
 
     @PostMapping("/rotation")
@@ -105,10 +106,13 @@ public class AuthController {
             )
     })
     public ResponseEntity<?> refresh(
+            @RequestBody(required = false) RefreshRequest refreshRequest,
             HttpServletRequest request,
             HttpServletResponse response
     ) {
-        String refreshToken = extractCookie(request, "refreshToken");
+        String refreshToken = (refreshRequest != null && refreshRequest.refreshToken() != null)
+                ? refreshRequest.refreshToken()
+                : extractCookie(request, "refreshToken");
 
         if (refreshToken == null) {
             log.warn("토큰 재발행 실패: 리프레시 토큰 없음");
@@ -127,7 +131,7 @@ public class AuthController {
             response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
 
             log.info("토큰 재발행 성공");
-            return ResponseEntity.ok().body(ApiResponse.success("리프레시 토큰 재발급 성공", null));
+            return ResponseEntity.ok().body(ApiResponse.success("토큰 갱신 성공", tokenPair));
         } catch (Exception e) {
             log.warn("토큰 재발행 실패: {}", e.getMessage());
             clearAuthCookies(response);
