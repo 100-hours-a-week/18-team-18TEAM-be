@@ -66,7 +66,7 @@ public class AuthController {
 
     @PostMapping("/login/{provider}")
     @Operation(summary = "로그인", description = "pathvariable로 소셜 서비스 회사명(kakao)를 받고 body로 " +
-            "소셜 로그인 코드를 받아 액세스 토큰과 리프레시 토큰을 HttpOnly 쿠키로 발급합니다.")
+            "소셜 로그인 코드와 redirect_uri를 받아 액세스 토큰과 리프레시 토큰을 HttpOnly 쿠키 그리고 바디로 발급합니다.")
     @ApiResponses({
             @io.swagger.v3.oas.annotations.responses.ApiResponse(
                     responseCode = "200",

@@ -45,7 +45,8 @@ public class SecurityConfig {
                                 "/api/auth/kakao/callback",
                                 "/api/auth/rotation",
                                 "/api/dev/**",
-                                "/error"
+                                "/error",
+                                "/chat-test.html"
                         ).permitAll()
                         .requestMatchers("/api/cards/uuid/**").permitAll()
                         .requestMatchers("/ws/**").permitAll()
