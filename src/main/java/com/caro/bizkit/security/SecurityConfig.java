@@ -44,9 +44,12 @@ public class SecurityConfig {
                                 "/api/auth/login/**",
                                 "/api/auth/kakao/callback",
                                 "/api/auth/rotation",
-                                "/error"
+                                "/api/dev/**",
+                                "/error",
+                                "/chat-test.html"
                         ).permitAll()
                         .requestMatchers("/api/cards/uuid/**").permitAll()
+                        .requestMatchers("/ws/**").permitAll()
                         .requestMatchers("/actuator", "/actuator/**").permitAll()
                         .requestMatchers("/swagger-ui", "/swagger-ui/**", "/v3/api-docs", "/v3/api-docs/**").permitAll()
                         .anyRequest().authenticated()

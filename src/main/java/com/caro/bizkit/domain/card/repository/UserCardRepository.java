@@ -1,14 +1,14 @@
 package com.caro.bizkit.domain.card.repository;
 
-import com.caro.bizkit.common.baserepository.BaseRepository;
 import com.caro.bizkit.domain.card.entity.UserCard;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-public interface UserCardRepository extends BaseRepository<UserCard, Integer> {
+public interface UserCardRepository extends JpaRepository<UserCard, Integer> {
     boolean existsByUserIdAndCardId(Integer userId, Integer cardId);
     List<UserCard> findAllByUserId(Integer userId);
     Optional<UserCard> findByUserIdAndCardId(Integer userId, Integer cardId);
@@ -19,12 +19,26 @@ public interface UserCardRepository extends BaseRepository<UserCard, Integer> {
             select uc.* from user_card uc
             join card c on uc.card_id = c.id
             where uc.user_id = :userId
-              and (:cursorId is null or uc.id < :cursorId)
               and match(c.name, c.company, c.email, c.position, c.phone_number, c.department)
                   against (:keyword in boolean mode)
             order by uc.created_at desc, uc.id desc
             """, nativeQuery = true)
     List<UserCard> searchCollectedCards(
+            @Param("userId") Integer userId,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
+
+    @Query(value = """
+            select uc.* from user_card uc
+            join card c on uc.card_id = c.id
+            where uc.user_id = :userId
+              and uc.id < :cursorId
+              and match(c.name, c.company, c.email, c.position, c.phone_number, c.department)
+                  against (:keyword in boolean mode)
+            order by uc.created_at desc, uc.id desc
+            """, nativeQuery = true)
+    List<UserCard> searchCollectedCardsWithCursor(
             @Param("userId") Integer userId,
             @Param("cursorId") Integer cursorId,
             @Param("keyword") String keyword,

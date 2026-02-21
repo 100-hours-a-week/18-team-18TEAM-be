@@ -20,4 +20,15 @@ public class ChatRoom {
 
     @Column(nullable = false)
     private LocalDateTime createdAt;
+
+    public static ChatRoom create() {
+        ChatRoom room = new ChatRoom();
+        room.createdAt = LocalDateTime.now();
+        return room;
+    }
+
+    public void updateLatestMessage(String content, LocalDateTime createdAt) {
+        this.latestMessageContent = content;
+        this.latestMessageCreatedAt = createdAt;
+    }
 }
