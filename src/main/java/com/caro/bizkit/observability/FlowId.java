@@ -10,7 +10,12 @@ public enum FlowId {
 
     UNKNOWN("unknown", HttpMethod.ANY, List.of()),
 
+    AUTH_LOGIN("AUTH_LOGIN", HttpMethod.POST, List.of("/api/auth/login")),
+    AUTH_ROTATION("AUTH_ROTATION", HttpMethod.POST, List.of("/api/auth/rotation")),
+    AUTH_LOGOUT("AUTH_LOGOUT", HttpMethod.POST, List.of("/api/auth/logout")),
+
     WALLET_LIST_GET("WALLET_LIST_GET", HttpMethod.GET, List.of("/api/wallets")),
+
     CARD_LIST_GET("CARD_LIST_GET", HttpMethod.GET, List.of("/api/cards", "/api/cards/me")),
     CARD_GET("CARD_GET", HttpMethod.GET, List.of("/api/cards/{card_id}", "/api/cards/me/latest", "/api/cards/uuid/{uuid}")),
     CARD_REGISTER("CARD_REGISTER", HttpMethod.POST, List.of("/api/wallets"));
