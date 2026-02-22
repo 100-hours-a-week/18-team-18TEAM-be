@@ -1,6 +1,7 @@
 package com.caro.bizkit.domain.chat.service;
 
 import com.caro.bizkit.domain.chat.dto.ChatRoomCreateRequest;
+import com.caro.bizkit.domain.chat.dto.ChatRoomListResult;
 import com.caro.bizkit.domain.chat.dto.ChatRoomResponse;
 import com.caro.bizkit.domain.chat.entity.ChatParticipant;
 import com.caro.bizkit.domain.chat.entity.ChatRoom;
@@ -17,6 +18,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -108,12 +110,19 @@ public class ChatRoomService {
     }
 
     @Transactional(readOnly = true)
-    public List<ChatRoomResponse> getMyRooms(UserPrincipal principal) {
+    public ChatRoomListResult getMyRooms(UserPrincipal principal, Integer size, Integer cursorId) {
         Integer myId = principal.id();
-        List<ChatParticipant> myParticipants = chatParticipantRepository.findByUserIdAndLeftAtIsNull(myId);
+        int limit = normalizeSize(size);
+
+        List<ChatParticipant> myParticipants = findMyParticipants(myId, cursorId, limit + 1);
+
+        boolean hasNext = myParticipants.size() > limit;
+        if (hasNext) {
+            myParticipants = myParticipants.subList(0, limit);
+        }
 
         if (myParticipants.isEmpty()) {
-            return List.of();
+            return new ChatRoomListResult(List.of(), null, false);
         }
 
         // 배치 COUNT 쿼리로 unread 일괄 조회
@@ -146,15 +155,8 @@ public class ChatRoomService {
             responses.add(ChatRoomResponse.from(room, otherUser, unread));
         }
 
-        // 최신 메시지순 정렬
-        responses.sort((a, b) -> {
-            if (a.latest_message_created_at() == null && b.latest_message_created_at() == null) return 0;
-            if (a.latest_message_created_at() == null) return 1;
-            if (b.latest_message_created_at() == null) return -1;
-            return b.latest_message_created_at().compareTo(a.latest_message_created_at());
-        });
-
-        return responses;
+        Integer nextCursorId = myParticipants.isEmpty() ? null : myParticipants.getLast().getChatRoom().getId();
+        return new ChatRoomListResult(responses, nextCursorId, hasNext);
     }
 
     @Transactional
@@ -168,5 +170,19 @@ public class ChatRoomService {
         }
 
         participant.leave();
+    }
+
+    private List<ChatParticipant> findMyParticipants(Integer userId, Integer cursorId, int limit) {
+        if (cursorId == null) {
+            return chatParticipantRepository.findMyRooms(userId, PageRequest.of(0, limit));
+        }
+        return chatParticipantRepository.findMyRoomsWithCursor(userId, cursorId, PageRequest.of(0, limit));
+    }
+
+    private int normalizeSize(Integer size) {
+        if (size == null || size < 1) {
+            return 20;
+        }
+        return size;
     }
 }
