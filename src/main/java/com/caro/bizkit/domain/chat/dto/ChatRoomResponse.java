@@ -14,11 +14,11 @@ public record ChatRoomResponse(
         LocalDateTime latest_message_created_at,
         int unread_count
 ) {
-    public static ChatRoomResponse from(ChatRoom room, User otherUser, int unreadCount) {
+    public static ChatRoomResponse from(ChatRoom room, User otherUser, String cardName, int unreadCount) {
         return new ChatRoomResponse(
                 room.getId(),
                 otherUser.getId(),
-                otherUser.getName(),
+                cardName != null ? cardName : otherUser.getName(),
                 otherUser.getProfileImageKey(),
                 room.getLatestMessageContent(),
                 room.getLatestMessageCreatedAt(),
