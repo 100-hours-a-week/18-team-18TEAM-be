@@ -8,6 +8,8 @@ import com.caro.bizkit.domain.card.dto.WalletResponse;
 import com.caro.bizkit.domain.card.service.WalletService;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -51,7 +53,31 @@ public class WalletController {
     @GetMapping()
     @Operation(summary = "수집한 명함 조회", description = "수집한 명함 목록을 커서 기반으로 조회합니다.")
     @ApiResponses({
-            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200")
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200",
+                    content = @Content(examples = @ExampleObject(value = """
+                            {
+                              "message": "수집 명함 조회 성공",
+                              "data": [
+                                {
+                                  "id": 1,
+                                  "user_id": 10,
+                                  "uuid": "550e8400-e29b-41d4-a716-446655440000",
+                                  "name": "홍길동",
+                                  "email": "hong@example.com",
+                                  "phone_number": "010-1234-5678",
+                                  "lined_number": "02-1234-5678",
+                                  "company": "카로",
+                                  "position": "백엔드 개발자",
+                                  "department": "개발팀",
+                                  "ai_image_key": "images/ai/abc.png"
+                                }
+                              ],
+                              "pagination": {
+                                "cursorId": 1,
+                                "has_next": true
+                              }
+                            }
+                            """)))
     })
     public ResponseEntity<ApiResponse<List<WalletResponse>>> getCollectedCards(
             @AuthenticationPrincipal UserPrincipal user,
