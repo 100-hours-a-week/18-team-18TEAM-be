@@ -16,6 +16,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final HttpHandshakeInterceptor httpHandshakeInterceptor;
     private final StompAuthChannelInterceptor stompAuthChannelInterceptor;
+    private final StompErrorHandler stompErrorHandler;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
@@ -26,6 +27,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        registry.setErrorHandler(stompErrorHandler);
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*")
                 .addInterceptors(httpHandshakeInterceptor);
