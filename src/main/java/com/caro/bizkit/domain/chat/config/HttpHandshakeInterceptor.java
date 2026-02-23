@@ -67,5 +67,8 @@ public class HttpHandshakeInterceptor implements HandshakeInterceptor {
             WebSocketHandler wsHandler,
             Exception exception
     ) {
+        if (exception != null) {
+            log.error("WebSocket handshake 실패: uri={}, error={}", request.getURI(), exception.getMessage(), exception);
+        }
     }
 }
