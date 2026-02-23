@@ -5,6 +5,7 @@ import com.caro.bizkit.domain.auth.dto.LoginRequest;
 import com.caro.bizkit.domain.auth.dto.RefreshRequest;
 import com.caro.bizkit.domain.auth.dto.TokenPair;
 import com.caro.bizkit.domain.auth.service.AuthService;
+import com.caro.bizkit.domain.auth.service.WsTicketService;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.security.JwtProperties;
 import com.caro.bizkit.security.JwtTokenProvider;
@@ -18,6 +19,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import java.util.Arrays;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -45,6 +47,7 @@ public class AuthController {
     private final JwtProperties jwtProperties;
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenService refreshTokenService;
+    private final WsTicketService wsTicketService;
     private final boolean cookieSecure;
     private final String cookieSameSite;
 
@@ -53,6 +56,7 @@ public class AuthController {
             JwtProperties jwtProperties,
             JwtTokenProvider jwtTokenProvider,
             RefreshTokenService refreshTokenService,
+            WsTicketService wsTicketService,
             @Value("${cookie.secure:true}") boolean cookieSecure,
             @Value("${cookie.same-site:Lax}") String cookieSameSite
     ) {
@@ -60,6 +64,7 @@ public class AuthController {
         this.jwtProperties = jwtProperties;
         this.jwtTokenProvider = jwtTokenProvider;
         this.refreshTokenService = refreshTokenService;
+        this.wsTicketService = wsTicketService;
         this.cookieSecure = cookieSecure;
         this.cookieSameSite = cookieSameSite;
     }
@@ -149,6 +154,15 @@ public class AuthController {
         authService.logout(userPrincipal.id());
         clearAuthCookies(response);
         return ResponseEntity.ok().body(ApiResponse.success("로그아웃 성공", null));
+    }
+
+    @PostMapping("/ws-ticket")
+    @Operation(summary = "WebSocket 티켓 발급", description = "WebSocket 연결을 위한 일회용 티켓을 발급합니다. (TTL 30초)")
+    public ResponseEntity<?> issueWsTicket(
+            @AuthenticationPrincipal UserPrincipal principal
+    ) {
+        String ticket = wsTicketService.issueTicket(principal.id());
+        return ResponseEntity.ok(ApiResponse.success("티켓 발급 성공", Map.of("ticket", ticket)));
     }
 
     @GetMapping("/kakao/callback")
