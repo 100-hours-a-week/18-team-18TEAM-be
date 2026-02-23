@@ -10,7 +10,9 @@ import com.caro.bizkit.domain.user.repository.UserRepository;
 import java.security.Principal;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.messaging.handler.annotation.MessageExceptionHandler;
 import org.springframework.messaging.handler.annotation.MessageMapping;
+import org.springframework.messaging.simp.annotation.SendToUser;
 import org.springframework.stereotype.Controller;
 
 @Slf4j
@@ -47,5 +49,12 @@ public class ChatStompController {
 
         // Redis publish (모든 인스턴스에 브로드캐스트)
         chatRedisPublisher.publish(response);
+    }
+
+    @MessageExceptionHandler
+    @SendToUser("/queue/errors")
+    public String handleException(Exception ex) {
+        log.warn("STOMP 메시지 처리 에러: {}", ex.getMessage());
+        return ex.getMessage() != null ? ex.getMessage() : "메시지 처리 중 오류가 발생했습니다.";
     }
 }
