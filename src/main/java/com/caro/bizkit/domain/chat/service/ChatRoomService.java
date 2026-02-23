@@ -5,6 +5,8 @@ import com.caro.bizkit.domain.chat.dto.ChatRoomListResult;
 import com.caro.bizkit.domain.chat.dto.ChatRoomResponse;
 import com.caro.bizkit.domain.chat.entity.ChatParticipant;
 import com.caro.bizkit.domain.chat.entity.ChatRoom;
+import com.caro.bizkit.domain.card.entity.Card;
+import com.caro.bizkit.domain.card.repository.CardRepository;
 import com.caro.bizkit.domain.chat.repository.ChatMessageRepository;
 import com.caro.bizkit.domain.chat.repository.ChatParticipantRepository;
 import com.caro.bizkit.domain.chat.repository.ChatRoomRepository;
@@ -33,6 +35,7 @@ public class ChatRoomService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatParticipantRepository chatParticipantRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final CardRepository cardRepository;
     private final UserRepository userRepository;
     private final StringRedisTemplate redisTemplate;
 
@@ -51,6 +54,8 @@ public class ChatRoomService {
         User targetUser = userRepository.findByIdAndDeletedAtIsNull(targetId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "대상 사용자를 찾을 수 없습니다."));
 
+        String targetCardName = getLatestCardName(targetId);
+
         // 기존 방 조회 (나간 사람 포함)
         ChatParticipant existing = chatParticipantRepository.findCommonRoomParticipant(myId, targetId)
                 .orElse(null);
@@ -64,7 +69,7 @@ public class ChatRoomService {
             if (myParticipant.hasLeft()) {
                 myParticipant.rejoin();
             }
-            return ChatRoomResponse.from(room, targetUser, 0);
+            return ChatRoomResponse.from(room, targetUser, targetCardName, 0);
         }
 
         // Redis 분산 락으로 중복 생성 방지
@@ -89,7 +94,7 @@ public class ChatRoomService {
                 if (myParticipant.hasLeft()) {
                     myParticipant.rejoin();
                 }
-                return ChatRoomResponse.from(room, targetUser, 0);
+                return ChatRoomResponse.from(room, targetUser, targetCardName, 0);
             }
 
             User myUser = userRepository.findByIdAndDeletedAtIsNull(myId)
@@ -103,7 +108,7 @@ public class ChatRoomService {
             chatParticipantRepository.save(myParticipant);
             chatParticipantRepository.save(targetParticipant);
 
-            return ChatRoomResponse.from(room, targetUser, 0);
+            return ChatRoomResponse.from(room, targetUser, targetCardName, 0);
         } finally {
             redisTemplate.delete(lockKey);
         }
@@ -151,8 +156,9 @@ public class ChatRoomService {
                 continue;
             }
 
+            String cardName = getLatestCardName(otherUser.getId());
             int unread = unreadMap.getOrDefault(room.getId(), 0);
-            responses.add(ChatRoomResponse.from(room, otherUser, unread));
+            responses.add(ChatRoomResponse.from(room, otherUser, cardName, unread));
         }
 
         Integer nextCursorId = myParticipants.isEmpty() ? null : myParticipants.getLast().getChatRoom().getId();
@@ -177,6 +183,12 @@ public class ChatRoomService {
             return chatParticipantRepository.findMyRooms(userId, PageRequest.of(0, limit));
         }
         return chatParticipantRepository.findMyRoomsWithCursor(userId, cursorId, PageRequest.of(0, limit));
+    }
+
+    private String getLatestCardName(Integer userId) {
+        return cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByStartDateDesc(userId)
+                .map(Card::getName)
+                .orElse(null);
     }
 
     private int normalizeSize(Integer size) {
