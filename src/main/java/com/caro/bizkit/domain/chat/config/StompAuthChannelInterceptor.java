@@ -26,12 +26,24 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
             return message;
         }
 
-        Object tokenAttr = accessor.getSessionAttributes() != null
-                ? accessor.getSessionAttributes().get("accessToken")
-                : null;
+        var sessionAttributes = accessor.getSessionAttributes();
+        if (sessionAttributes == null) {
+            throw new IllegalArgumentException("인증 정보가 없습니다.");
+        }
 
+        // 1. ticket 기반 인증 (HttpHandshakeInterceptor에서 userId 세팅)
+        Object userIdAttr = sessionAttributes.get("userId");
+        if (userIdAttr != null) {
+            String userId = String.valueOf(userIdAttr);
+            accessor.setUser(new StompPrincipal(userId));
+            log.debug("STOMP CONNECT: ticket 기반 인증, userId={}", userId);
+            return message;
+        }
+
+        // 2. 쿠키 기반 JWT 폴백
+        Object tokenAttr = sessionAttributes.get("accessToken");
         if (tokenAttr == null) {
-            log.warn("STOMP CONNECT: accessToken not found in session");
+            log.warn("STOMP CONNECT: 인증 정보 없음 (ticket/accessToken 모두 없음)");
             throw new IllegalArgumentException("인증 토큰이 없습니다.");
         }
 
@@ -44,7 +56,7 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
         Claims claims = jwtTokenProvider.parseClaims(token);
         String userId = claims.getSubject();
         accessor.setUser(new StompPrincipal(userId));
-        log.debug("STOMP CONNECT: authenticated userId={}", userId);
+        log.debug("STOMP CONNECT: JWT 기반 인증, userId={}", userId);
 
         return message;
     }
