@@ -3,6 +3,7 @@ package com.caro.bizkit.domain.chat.service;
 import com.caro.bizkit.domain.chat.dto.ChatMessagePagination;
 import com.caro.bizkit.domain.chat.dto.ChatMessageRequest;
 import com.caro.bizkit.domain.chat.dto.ChatMessageResponse;
+import com.caro.bizkit.domain.chat.dto.ChatMessagesResult;
 import com.caro.bizkit.domain.chat.entity.ChatMessage;
 import com.caro.bizkit.domain.chat.entity.ChatParticipant;
 import com.caro.bizkit.domain.chat.entity.ChatRoom;
@@ -46,7 +47,7 @@ public class ChatMessageService {
     }
 
     @Transactional(readOnly = true)
-    public List<ChatMessageResponse> getMessages(UserPrincipal principal, Integer roomId, Long cursorId, int size) {
+    public ChatMessagesResult getMessages(UserPrincipal principal, Integer roomId, Long cursorId, int size) {
         ChatParticipant participant = chatParticipantRepository
                 .findByUserIdAndChatRoomId(principal.id(), roomId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "채팅방 참여자가 아닙니다."));
@@ -63,12 +64,23 @@ public class ChatMessageService {
 
         // size + 1 개를 요청했으므로, size 초과분이 있으면 has_next = true
         List<ChatMessage> result = messages.size() > size ? messages.subList(0, size) : messages;
-        return result.stream().map(ChatMessageResponse::from).toList();
+        List<ChatMessageResponse> responses = result.stream().map(ChatMessageResponse::from).toList();
+
+        // 상대방의 lastReadMessageId 조회
+        Long otherLastReadMessageId = chatParticipantRepository
+                .findByChatRoomIdAndLeftAtIsNull(roomId)
+                .stream()
+                .filter(p -> !p.getUser().getId().equals(principal.id()))
+                .map(ChatParticipant::getLastReadMessageId)
+                .findFirst()
+                .orElse(null);
+
+        return new ChatMessagesResult(responses, otherLastReadMessageId);
     }
 
-    public ChatMessagePagination buildPagination(List<ChatMessageResponse> messages, int requestedSize) {
-        boolean hasNext = messages.size() == requestedSize;
-        Long cursorId = messages.isEmpty() ? null : messages.get(messages.size() - 1).message_id();
+    public ChatMessagePagination buildPagination(ChatMessagesResult result, int requestedSize) {
+        boolean hasNext = result.messages().size() == requestedSize;
+        Long cursorId = result.messages().isEmpty() ? null : result.messages().getLast().message_id();
         return new ChatMessagePagination(cursorId, hasNext);
     }
 
