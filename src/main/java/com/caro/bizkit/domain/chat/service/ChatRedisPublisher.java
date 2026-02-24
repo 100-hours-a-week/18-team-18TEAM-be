@@ -32,7 +32,10 @@ public class ChatRedisPublisher {
     public void publishReadNotification(ChatReadEvent event) {
         try {
             String json = objectMapper.writeValueAsString(event);
+            log.debug("[READ] Redis 발행 - channel={}, roomId={}, targetUserId={}, messageId={}",
+                    chatReadTopic.getTopic(), event.room_id(), event.target_user_id(), event.last_read_message_id());
             redisTemplate.convertAndSend(chatReadTopic.getTopic(), json);
+            log.debug("[READ] Redis 발행 완료 - roomId={}, targetUserId={}", event.room_id(), event.target_user_id());
         } catch (JsonProcessingException e) {
             log.error("Redis read notification publish 실패: roomId={}, targetUserId={}", event.room_id(), event.target_user_id(), e);
         }

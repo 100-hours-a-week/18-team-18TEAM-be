@@ -58,9 +58,8 @@ public class ChatRedisSubscriber {
                         chatMessage.created_at()
                 );
 
-                messagingTemplate.convertAndSendToUser(
-                        String.valueOf(userId),
-                        "/queue/chat/notifications",
+                messagingTemplate.convertAndSend(
+                        "/sub/chat/notifications/" + userId,
                         notification
                 );
             }
@@ -71,12 +70,15 @@ public class ChatRedisSubscriber {
 
     public void onReadNotification(String message) {
         try {
+            log.debug("[READ] Redis 수신 - raw={}", message);
             ChatReadEvent event = objectMapper.readValue(message, ChatReadEvent.class);
-            messagingTemplate.convertAndSendToUser(
-                    String.valueOf(event.target_user_id()),
-                    "/queue/chat/read",
-                    new ChatReadNotification(event.room_id(), event.last_read_message_id())
-            );
+            log.debug("[READ] Redis 역직렬화 완료 - roomId={}, targetUserId={}, messageId={}",
+                    event.room_id(), event.target_user_id(), event.last_read_message_id());
+
+            String dest = "/sub/chat/read/" + event.target_user_id();
+            log.debug("[READ] 전송 - dest={}", dest);
+            messagingTemplate.convertAndSend(dest,
+                    new ChatReadNotification(event.room_id(), event.last_read_message_id()));
         } catch (Exception e) {
             log.error("Redis read notification 처리 실패", e);
         }

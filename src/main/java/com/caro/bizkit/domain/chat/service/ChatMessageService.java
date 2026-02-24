@@ -14,12 +14,14 @@ import com.caro.bizkit.domain.chat.repository.ChatRoomRepository;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ChatMessageService {
@@ -97,15 +99,22 @@ public class ChatMessageService {
         }
 
         chatMessageRepository.findTopByChatRoomIdOrderByIdDesc(roomId).ifPresent(latest -> {
+            log.debug("[READ] markAsRead - roomId={}, userId={}, latestMessageId={}", roomId, principal.id(), latest.getId());
             participant.updateLastReadMessageId(latest.getId());
 
             // 상대방에게 읽음 알림 전송 (Redis pub/sub으로 멀티 인스턴스 지원)
             chatParticipantRepository.findByChatRoomIdAndLeftAtIsNull(roomId).stream()
                     .filter(p -> !p.getUser().getId().equals(principal.id()))
                     .findFirst()
-                    .ifPresent(other -> chatRedisPublisher.publishReadNotification(
-                            new ChatReadEvent(roomId, latest.getId(), other.getUser().getId())
-                    ));
+                    .ifPresentOrElse(
+                            other -> {
+                                log.debug("[READ] 상대방 발견 - targetUserId={}, roomId={}", other.getUser().getId(), roomId);
+                                chatRedisPublisher.publishReadNotification(
+                                        new ChatReadEvent(roomId, latest.getId(), other.getUser().getId())
+                                );
+                            },
+                            () -> log.warn("[READ] 상대방 없음 - roomId={}, userId={}", roomId, principal.id())
+                    );
         });
     }
 }
