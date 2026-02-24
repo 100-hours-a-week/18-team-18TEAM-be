@@ -22,6 +22,7 @@ import org.springframework.stereotype.Component;
 public class StompAuthChannelInterceptor implements ChannelInterceptor {
 
     private static final Pattern CHAT_ROOM_DESTINATION = Pattern.compile("^/sub/chat/rooms/(\\d+)$");
+    private static final Pattern CHAT_READ_DESTINATION = Pattern.compile("^/sub/chat/read/(\\d+)$");
 
     private final JwtTokenProvider jwtTokenProvider;
     private final ChatParticipantRepository chatParticipantRepository;
@@ -83,26 +84,38 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
             return;
         }
 
-        Matcher matcher = CHAT_ROOM_DESTINATION.matcher(destination);
-        if (!matcher.matches()) {
+        Principal user = accessor.getUser();
+
+        Matcher roomMatcher = CHAT_ROOM_DESTINATION.matcher(destination);
+        if (roomMatcher.matches()) {
+            if (user == null) {
+                log.warn("STOMP SUBSCRIBE: 인증 정보 없음, destination={}", destination);
+                throw new IllegalArgumentException("인증 정보가 없습니다.");
+            }
+            Integer userId = Integer.valueOf(user.getName());
+            Integer roomId = Integer.valueOf(roomMatcher.group(1));
+            boolean isMember = chatParticipantRepository.existsByUserIdAndChatRoomIdAndLeftAtIsNull(userId, roomId);
+            if (!isMember) {
+                log.warn("STOMP SUBSCRIBE: 채팅방 미참여자 구독 시도, userId={}, roomId={}", userId, roomId);
+                throw new IllegalArgumentException("채팅방에 참여하지 않은 사용자입니다.");
+            }
+            log.debug("STOMP SUBSCRIBE: 멤버십 검증 성공, userId={}, roomId={}", userId, roomId);
             return;
         }
 
-        Integer roomId = Integer.valueOf(matcher.group(1));
-
-        Principal user = accessor.getUser();
-        if (user == null) {
-            log.warn("STOMP SUBSCRIBE: 인증 정보 없음, destination={}", destination);
-            throw new IllegalArgumentException("인증 정보가 없습니다.");
+        Matcher readMatcher = CHAT_READ_DESTINATION.matcher(destination);
+        if (readMatcher.matches()) {
+            if (user == null) {
+                log.warn("STOMP SUBSCRIBE: 인증 정보 없음, destination={}", destination);
+                throw new IllegalArgumentException("인증 정보가 없습니다.");
+            }
+            Integer userId = Integer.valueOf(user.getName());
+            Integer targetUserId = Integer.valueOf(readMatcher.group(1));
+            if (!userId.equals(targetUserId)) {
+                log.warn("STOMP SUBSCRIBE: 타인의 읽음 알림 구독 시도, userId={}, targetUserId={}", userId, targetUserId);
+                throw new IllegalArgumentException("본인의 읽음 알림만 구독할 수 있습니다.");
+            }
+            log.debug("STOMP SUBSCRIBE: 읽음 알림 구독 검증 성공, userId={}", userId);
         }
-
-        Integer userId = Integer.valueOf(user.getName());
-        boolean isMember = chatParticipantRepository.existsByUserIdAndChatRoomIdAndLeftAtIsNull(userId, roomId);
-        if (!isMember) {
-            log.warn("STOMP SUBSCRIBE: 채팅방 미참여자 구독 시도, userId={}, roomId={}", userId, roomId);
-            throw new IllegalArgumentException("채팅방에 참여하지 않은 사용자입니다.");
-        }
-
-        log.debug("STOMP SUBSCRIBE: 멤버십 검증 성공, userId={}, roomId={}", userId, roomId);
     }
 }

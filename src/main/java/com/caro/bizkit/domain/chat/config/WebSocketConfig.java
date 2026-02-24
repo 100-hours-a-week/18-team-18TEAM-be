@@ -15,6 +15,7 @@ import org.springframework.web.socket.config.annotation.WebSocketTransportRegist
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final HttpHandshakeInterceptor httpHandshakeInterceptor;
+    private final WebSocketHandshakeHandler webSocketHandshakeHandler;
     private final StompAuthChannelInterceptor stompAuthChannelInterceptor;
     private final StompErrorHandler stompErrorHandler;
     private final LoggingWebSocketHandlerDecoratorFactory loggingDecoratorFactory;
@@ -31,7 +32,8 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
         registry.setErrorHandler(stompErrorHandler);
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*")
-                .addInterceptors(httpHandshakeInterceptor);
+                .addInterceptors(httpHandshakeInterceptor)
+                .setHandshakeHandler(webSocketHandshakeHandler);
     }
 
     @Override
