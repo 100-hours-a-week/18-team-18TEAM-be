@@ -58,9 +58,8 @@ public class ChatRedisSubscriber {
                         chatMessage.created_at()
                 );
 
-                messagingTemplate.convertAndSendToUser(
-                        String.valueOf(userId),
-                        "/queue/chat/notifications",
+                messagingTemplate.convertAndSend(
+                        "/sub/chat/notifications/" + userId,
                         notification
                 );
             }

@@ -23,6 +23,7 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
 
     private static final Pattern CHAT_ROOM_DESTINATION = Pattern.compile("^/sub/chat/rooms/(\\d+)$");
     private static final Pattern CHAT_READ_DESTINATION = Pattern.compile("^/sub/chat/read/(\\d+)$");
+    private static final Pattern CHAT_NOTIFICATION_DESTINATION = Pattern.compile("^/sub/chat/notifications/(\\d+)$");
 
     private final JwtTokenProvider jwtTokenProvider;
     private final ChatParticipantRepository chatParticipantRepository;
@@ -116,6 +117,22 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
                 throw new IllegalArgumentException("본인의 읽음 알림만 구독할 수 있습니다.");
             }
             log.debug("STOMP SUBSCRIBE: 읽음 알림 구독 검증 성공, userId={}", userId);
+            return;
+        }
+
+        Matcher notifMatcher = CHAT_NOTIFICATION_DESTINATION.matcher(destination);
+        if (notifMatcher.matches()) {
+            if (user == null) {
+                log.warn("STOMP SUBSCRIBE: 인증 정보 없음, destination={}", destination);
+                throw new IllegalArgumentException("인증 정보가 없습니다.");
+            }
+            Integer userId = Integer.valueOf(user.getName());
+            Integer targetUserId = Integer.valueOf(notifMatcher.group(1));
+            if (!userId.equals(targetUserId)) {
+                log.warn("STOMP SUBSCRIBE: 타인의 알림 구독 시도, userId={}, targetUserId={}", userId, targetUserId);
+                throw new IllegalArgumentException("본인의 알림만 구독할 수 있습니다.");
+            }
+            log.debug("STOMP SUBSCRIBE: 알림 구독 검증 성공, userId={}", userId);
         }
     }
 }
