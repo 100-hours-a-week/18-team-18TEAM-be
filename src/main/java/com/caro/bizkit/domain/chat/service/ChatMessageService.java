@@ -4,6 +4,7 @@ import com.caro.bizkit.domain.chat.dto.ChatMessagePagination;
 import com.caro.bizkit.domain.chat.dto.ChatMessageRequest;
 import com.caro.bizkit.domain.chat.dto.ChatMessageResponse;
 import com.caro.bizkit.domain.chat.dto.ChatMessagesResult;
+import com.caro.bizkit.domain.chat.dto.ChatReadNotification;
 import com.caro.bizkit.domain.chat.entity.ChatMessage;
 import com.caro.bizkit.domain.chat.entity.ChatParticipant;
 import com.caro.bizkit.domain.chat.entity.ChatRoom;
@@ -15,6 +16,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -26,6 +28,7 @@ public class ChatMessageService {
     private final ChatMessageRepository chatMessageRepository;
     private final ChatParticipantRepository chatParticipantRepository;
     private final ChatRoomRepository chatRoomRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional
     public ChatMessageResponse sendMessage(UserPrincipal principal, ChatMessageRequest request) {
@@ -94,7 +97,18 @@ public class ChatMessageService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "나간 채팅방입니다.");
         }
 
-        chatMessageRepository.findTopByChatRoomIdOrderByIdDesc(roomId)
-                .ifPresent(latest -> participant.updateLastReadMessageId(latest.getId()));
+        chatMessageRepository.findTopByChatRoomIdOrderByIdDesc(roomId).ifPresent(latest -> {
+            participant.updateLastReadMessageId(latest.getId());
+
+            // 상대방에게 읽음 알림 전송
+            chatParticipantRepository.findByChatRoomIdAndLeftAtIsNull(roomId).stream()
+                    .filter(p -> !p.getUser().getId().equals(principal.id()))
+                    .findFirst()
+                    .ifPresent(other -> messagingTemplate.convertAndSendToUser(
+                            String.valueOf(other.getUser().getId()),
+                            "/queue/chat/read",
+                            new ChatReadNotification(roomId, latest.getId())
+                    ));
+        });
     }
 }
