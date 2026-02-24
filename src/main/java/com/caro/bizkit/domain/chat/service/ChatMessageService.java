@@ -74,8 +74,8 @@ public class ChatMessageService {
                 .findByChatRoomIdAndLeftAtIsNull(roomId)
                 .stream()
                 .filter(p -> !p.getUser().getId().equals(principal.id()))
-                .map(ChatParticipant::getLastReadMessageId)
                 .findFirst()
+                .map(ChatParticipant::getLastReadMessageId)
                 .orElse(null);
 
         return new ChatMessagesResult(responses, otherLastReadMessageId);
