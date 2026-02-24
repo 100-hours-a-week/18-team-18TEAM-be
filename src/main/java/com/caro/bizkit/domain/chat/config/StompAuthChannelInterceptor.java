@@ -36,7 +36,7 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
         if (userIdAttr != null) {
             String userId = String.valueOf(userIdAttr);
             accessor.setUser(new StompPrincipal(userId));
-            log.debug("STOMP CONNECT: ticket 기반 인증, userId={}", userId);
+            log.info("STOMP CONNECT: ticket 기반 인증 성공, userId={}", userId);
             return message;
         }
 
@@ -56,7 +56,7 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
         Claims claims = jwtTokenProvider.parseClaims(token);
         String userId = claims.getSubject();
         accessor.setUser(new StompPrincipal(userId));
-        log.debug("STOMP CONNECT: JWT 기반 인증, userId={}", userId);
+        log.info("STOMP CONNECT: JWT 기반 인증 성공, userId={}", userId);
 
         return message;
     }
