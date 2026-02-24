@@ -3,6 +3,7 @@ package com.caro.bizkit.domain.chat.controller;
 import com.caro.bizkit.common.ApiResponse.ApiResponse;
 import com.caro.bizkit.domain.chat.dto.ChatMessagePagination;
 import com.caro.bizkit.domain.chat.dto.ChatMessageResponse;
+import com.caro.bizkit.domain.chat.dto.ChatMessagesResult;
 import com.caro.bizkit.domain.chat.service.ChatMessageService;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
@@ -53,15 +54,15 @@ public class ChatMessageController {
                             }
                             """)))
     })
-    public ResponseEntity<ApiResponse<List<ChatMessageResponse>>> getMessages(
+    public ResponseEntity<ApiResponse<ChatMessagesResult>> getMessages(
             @AuthenticationPrincipal UserPrincipal principal,
             @PathVariable("room_id") Integer roomId,
             @RequestParam(required = false) Long cursorId,
             @RequestParam(defaultValue = "20") int size
     ) {
-        List<ChatMessageResponse> messages = chatMessageService.getMessages(principal, roomId, cursorId, size);
-        ChatMessagePagination pagination = chatMessageService.buildPagination(messages, size);
-        return ResponseEntity.ok(ApiResponse.successWithPagination("메시지 조회 성공", messages, pagination));
+        ChatMessagesResult result = chatMessageService.getMessages(principal, roomId, cursorId, size);
+        ChatMessagePagination pagination = chatMessageService.buildPagination(result, size);
+        return ResponseEntity.ok(ApiResponse.successWithPagination("메시지 조회 성공", result, pagination));
     }
 
     @PostMapping("/read")

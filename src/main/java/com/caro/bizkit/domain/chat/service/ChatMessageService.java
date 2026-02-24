@@ -3,6 +3,8 @@ package com.caro.bizkit.domain.chat.service;
 import com.caro.bizkit.domain.chat.dto.ChatMessagePagination;
 import com.caro.bizkit.domain.chat.dto.ChatMessageRequest;
 import com.caro.bizkit.domain.chat.dto.ChatMessageResponse;
+import com.caro.bizkit.domain.chat.dto.ChatMessagesResult;
+import com.caro.bizkit.domain.chat.dto.ChatReadNotification;
 import com.caro.bizkit.domain.chat.entity.ChatMessage;
 import com.caro.bizkit.domain.chat.entity.ChatParticipant;
 import com.caro.bizkit.domain.chat.entity.ChatRoom;
@@ -14,6 +16,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.http.HttpStatus;
+import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
@@ -25,6 +28,7 @@ public class ChatMessageService {
     private final ChatMessageRepository chatMessageRepository;
     private final ChatParticipantRepository chatParticipantRepository;
     private final ChatRoomRepository chatRoomRepository;
+    private final SimpMessagingTemplate messagingTemplate;
 
     @Transactional
     public ChatMessageResponse sendMessage(UserPrincipal principal, ChatMessageRequest request) {
@@ -46,7 +50,7 @@ public class ChatMessageService {
     }
 
     @Transactional(readOnly = true)
-    public List<ChatMessageResponse> getMessages(UserPrincipal principal, Integer roomId, Long cursorId, int size) {
+    public ChatMessagesResult getMessages(UserPrincipal principal, Integer roomId, Long cursorId, int size) {
         ChatParticipant participant = chatParticipantRepository
                 .findByUserIdAndChatRoomId(principal.id(), roomId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.FORBIDDEN, "채팅방 참여자가 아닙니다."));
@@ -63,12 +67,23 @@ public class ChatMessageService {
 
         // size + 1 개를 요청했으므로, size 초과분이 있으면 has_next = true
         List<ChatMessage> result = messages.size() > size ? messages.subList(0, size) : messages;
-        return result.stream().map(ChatMessageResponse::from).toList();
+        List<ChatMessageResponse> responses = result.stream().map(ChatMessageResponse::from).toList();
+
+        // 상대방의 lastReadMessageId 조회
+        Long otherLastReadMessageId = chatParticipantRepository
+                .findByChatRoomIdAndLeftAtIsNull(roomId)
+                .stream()
+                .filter(p -> !p.getUser().getId().equals(principal.id()))
+                .map(ChatParticipant::getLastReadMessageId)
+                .findFirst()
+                .orElse(null);
+
+        return new ChatMessagesResult(responses, otherLastReadMessageId);
     }
 
-    public ChatMessagePagination buildPagination(List<ChatMessageResponse> messages, int requestedSize) {
-        boolean hasNext = messages.size() == requestedSize;
-        Long cursorId = messages.isEmpty() ? null : messages.get(messages.size() - 1).message_id();
+    public ChatMessagePagination buildPagination(ChatMessagesResult result, int requestedSize) {
+        boolean hasNext = result.messages().size() == requestedSize;
+        Long cursorId = result.messages().isEmpty() ? null : result.messages().getLast().message_id();
         return new ChatMessagePagination(cursorId, hasNext);
     }
 
@@ -82,7 +97,18 @@ public class ChatMessageService {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "나간 채팅방입니다.");
         }
 
-        chatMessageRepository.findTopByChatRoomIdOrderByIdDesc(roomId)
-                .ifPresent(latest -> participant.updateLastReadMessageId(latest.getId()));
+        chatMessageRepository.findTopByChatRoomIdOrderByIdDesc(roomId).ifPresent(latest -> {
+            participant.updateLastReadMessageId(latest.getId());
+
+            // 상대방에게 읽음 알림 전송
+            chatParticipantRepository.findByChatRoomIdAndLeftAtIsNull(roomId).stream()
+                    .filter(p -> !p.getUser().getId().equals(principal.id()))
+                    .findFirst()
+                    .ifPresent(other -> messagingTemplate.convertAndSendToUser(
+                            String.valueOf(other.getUser().getId()),
+                            "/queue/chat/read",
+                            new ChatReadNotification(roomId, latest.getId())
+                    ));
+        });
     }
 }
