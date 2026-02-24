@@ -2,6 +2,8 @@ package com.caro.bizkit.domain.chat.service;
 
 import com.caro.bizkit.domain.chat.dto.ChatNotification;
 import com.caro.bizkit.domain.chat.dto.ChatMessageResponse;
+import com.caro.bizkit.domain.chat.dto.ChatReadEvent;
+import com.caro.bizkit.domain.chat.dto.ChatReadNotification;
 import com.caro.bizkit.domain.chat.entity.ChatParticipant;
 import com.caro.bizkit.domain.chat.repository.ChatMessageRepository;
 import com.caro.bizkit.domain.chat.repository.ChatParticipantRepository;
@@ -64,6 +66,19 @@ public class ChatRedisSubscriber {
             }
         } catch (Exception e) {
             log.error("Redis 메시지 처리 실패", e);
+        }
+    }
+
+    public void onReadNotification(String message) {
+        try {
+            ChatReadEvent event = objectMapper.readValue(message, ChatReadEvent.class);
+            messagingTemplate.convertAndSendToUser(
+                    String.valueOf(event.target_user_id()),
+                    "/queue/chat/read",
+                    new ChatReadNotification(event.room_id(), event.last_read_message_id())
+            );
+        } catch (Exception e) {
+            log.error("Redis read notification 처리 실패", e);
         }
     }
 }
