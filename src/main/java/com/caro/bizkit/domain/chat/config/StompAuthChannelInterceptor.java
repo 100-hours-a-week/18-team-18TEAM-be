@@ -1,7 +1,11 @@
 package com.caro.bizkit.domain.chat.config;
 
+import com.caro.bizkit.domain.chat.repository.ChatParticipantRepository;
 import com.caro.bizkit.security.JwtTokenProvider;
 import io.jsonwebtoken.Claims;
+import java.security.Principal;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.Message;
@@ -17,12 +21,24 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class StompAuthChannelInterceptor implements ChannelInterceptor {
 
+    private static final Pattern CHAT_ROOM_DESTINATION = Pattern.compile("^/sub/chat/rooms/(\\d+)$");
+
     private final JwtTokenProvider jwtTokenProvider;
+    private final ChatParticipantRepository chatParticipantRepository;
 
     @Override
     public Message<?> preSend(Message<?> message, MessageChannel channel) {
         StompHeaderAccessor accessor = MessageHeaderAccessor.getAccessor(message, StompHeaderAccessor.class);
-        if (accessor == null || accessor.getCommand() != StompCommand.CONNECT) {
+        if (accessor == null) {
+            return message;
+        }
+
+        if (accessor.getCommand() == StompCommand.SUBSCRIBE) {
+            validateSubscription(accessor);
+            return message;
+        }
+
+        if (accessor.getCommand() != StompCommand.CONNECT) {
             return message;
         }
 
@@ -59,5 +75,34 @@ public class StompAuthChannelInterceptor implements ChannelInterceptor {
         log.info("STOMP CONNECT: JWT 기반 인증 성공, userId={}", userId);
 
         return message;
+    }
+
+    private void validateSubscription(StompHeaderAccessor accessor) {
+        String destination = accessor.getDestination();
+        if (destination == null) {
+            return;
+        }
+
+        Matcher matcher = CHAT_ROOM_DESTINATION.matcher(destination);
+        if (!matcher.matches()) {
+            return;
+        }
+
+        Integer roomId = Integer.valueOf(matcher.group(1));
+
+        Principal user = accessor.getUser();
+        if (user == null) {
+            log.warn("STOMP SUBSCRIBE: 인증 정보 없음, destination={}", destination);
+            throw new IllegalArgumentException("인증 정보가 없습니다.");
+        }
+
+        Integer userId = Integer.valueOf(user.getName());
+        boolean isMember = chatParticipantRepository.existsByUserIdAndChatRoomIdAndLeftAtIsNull(userId, roomId);
+        if (!isMember) {
+            log.warn("STOMP SUBSCRIBE: 채팅방 미참여자 구독 시도, userId={}, roomId={}", userId, roomId);
+            throw new IllegalArgumentException("채팅방에 참여하지 않은 사용자입니다.");
+        }
+
+        log.debug("STOMP SUBSCRIBE: 멤버십 검증 성공, userId={}, roomId={}", userId, roomId);
     }
 }
