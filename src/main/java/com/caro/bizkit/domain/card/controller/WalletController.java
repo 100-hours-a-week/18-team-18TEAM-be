@@ -3,6 +3,8 @@ package com.caro.bizkit.domain.card.controller;
 import com.caro.bizkit.common.ApiResponse.ApiResponse;
 import com.caro.bizkit.common.ApiResponse.Pagination;
 import com.caro.bizkit.domain.card.dto.CardCollectRequest;
+import com.caro.bizkit.domain.card.dto.CardOcrRequest;
+import com.caro.bizkit.domain.card.dto.CardResponse;
 import com.caro.bizkit.domain.card.dto.CollectedCardsResult;
 import com.caro.bizkit.domain.card.dto.WalletResponse;
 import com.caro.bizkit.domain.card.service.WalletService;
@@ -36,6 +38,21 @@ import org.springframework.web.bind.annotation.RestController;
 public class WalletController {
 
     private final WalletService walletService;
+
+    @PostMapping("/paper-cards")
+    @Operation(summary = "OCR 명함 등록", description = "OCR로 인식한 명함 데이터를 등록하고 수집합니다.")
+    @ApiResponses({
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "200"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "400"),
+            @io.swagger.v3.oas.annotations.responses.ApiResponse(responseCode = "409")
+    })
+    public ResponseEntity<ApiResponse<CardResponse>> registerPaperCard(
+            @AuthenticationPrincipal UserPrincipal user,
+            @Valid @RequestBody CardOcrRequest request
+    ) {
+        CardResponse card = walletService.createAnonymousCard(user, request);
+        return ResponseEntity.ok(ApiResponse.success("OCR 명함 등록 성공", card));
+    }
 
     @PostMapping()
     @Operation(summary = "상대방 명함 수집", description = "QR로 받은 uuid를 통해 명함을 수집합니다.")
