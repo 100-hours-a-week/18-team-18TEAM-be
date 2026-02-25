@@ -7,6 +7,7 @@ import com.caro.bizkit.domain.auth.entity.Account;
 import com.caro.bizkit.domain.auth.entity.OAuth;
 import com.caro.bizkit.domain.auth.repository.AccountRepository;
 import com.caro.bizkit.domain.auth.repository.OAuthRepository;
+import com.caro.bizkit.domain.card.repository.CardRepository;
 import com.caro.bizkit.domain.user.entity.AiUsage;
 import com.caro.bizkit.domain.user.entity.User;
 import com.caro.bizkit.domain.user.repository.AiUsageRepository;
@@ -34,6 +35,7 @@ public class AuthService {
     private final OAuthRepository oAuthRepository;
     private final UserRepository userRepository;
     private final AiUsageRepository aiUsageRepository;
+    private final CardRepository cardRepository;
     private final JwtTokenProvider jwtTokenProvider;
     private final RefreshTokenService refreshTokenService;
 
@@ -116,6 +118,10 @@ public class AuthService {
         AiUsage aiUsage = AiUsage.create(user);
         userRepository.save(user);
         aiUsageRepository.save(aiUsage);
+
+        cardRepository.findAllByUserIsNullAndDeletedAtIsNullAndNameAndEmail(nickname, loginEmail)
+                .forEach(card -> card.setUser(user));
+
         log.info("Account created: {}", loginEmail);
 
         return savedAccount;

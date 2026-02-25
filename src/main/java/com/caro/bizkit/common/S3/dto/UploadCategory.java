@@ -1,17 +1,24 @@
 package com.caro.bizkit.common.S3.dto;
 
 public enum UploadCategory {
-    PROFILE("profile"),
-    QR("qr"),
-    AI("ai");
+    PROFILE("profile", null),
+    QR("qr", null),
+    AI("ai", null),
+    OCR("ocr", 1);
 
     private final String prefix;
+    private final Integer lifetimeDays;
 
-    UploadCategory(String prefix) {
+    UploadCategory(String prefix, Integer lifetimeDays) {
         this.prefix = prefix;
+        this.lifetimeDays = lifetimeDays;
     }
 
     public String prefix() {
         return prefix;
+    }
+
+    public Integer lifetimeDays() {
+        return lifetimeDays;
     }
 }
