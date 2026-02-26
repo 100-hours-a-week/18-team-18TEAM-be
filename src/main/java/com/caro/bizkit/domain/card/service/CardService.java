@@ -80,7 +80,19 @@ public class CardService {
             return new CardCreateResult(CardResponse.from(duplicate.get()), true);
         }
 
+        Optional<Card> anonymous = StringUtils.hasText(request.position())
+                ? cardRepository.findFirstByUserIsNullAndDeletedAtIsNullAndNameAndEmailAndCompanyAndPositionOrderByCreatedAtDesc(
+                        request.name(), request.email(), request.company(), request.position())
+                : cardRepository.findFirstByUserIsNullAndDeletedAtIsNullAndNameAndEmailAndCompanyOrderByCreatedAtDesc(
+                        request.name(), request.email(), request.company());
+
         User user = userRepository.getReferenceById(principal.id());
+
+        if (anonymous.isPresent()) {
+            anonymous.get().setUser(user);
+            return new CardCreateResult(CardResponse.from(anonymous.get()), false);
+        }
+
         Card card = Card.create(
                 user,
                 Card.newUuid(),
