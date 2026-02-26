@@ -16,6 +16,7 @@ import com.caro.bizkit.domain.user.entity.User;
 import com.caro.bizkit.domain.user.repository.UserRepository;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
@@ -69,6 +70,16 @@ public class CardService {
 
     @Transactional
     public CardCreateResult createMyCard(UserPrincipal principal, CardRequest request) {
+        Optional<Card> duplicate = StringUtils.hasText(request.position())
+                ? cardRepository.findFirstByUserIdAndDeletedAtIsNullAndNameAndEmailAndCompanyAndPositionOrderByCreatedAtDesc(
+                        principal.id(), request.name(), request.email(), request.company(), request.position())
+                : cardRepository.findFirstByUserIdAndDeletedAtIsNullAndNameAndEmailAndCompanyOrderByCreatedAtDesc(
+                        principal.id(), request.name(), request.email(), request.company());
+
+        if (duplicate.isPresent()) {
+            return new CardCreateResult(CardResponse.from(duplicate.get()), true);
+        }
+
         User user = userRepository.getReferenceById(principal.id());
         Card card = Card.create(
                 user,
