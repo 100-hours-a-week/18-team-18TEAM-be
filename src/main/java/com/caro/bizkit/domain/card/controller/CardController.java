@@ -103,7 +103,11 @@ public class CardController {
             @Valid @RequestBody CardRequest request
     ) {
         CardCreateResult result = cardService.createMyCard(user, request);
-        String message = result.isDuplicate() ? "이미 동일한 명함이 존재합니다" : "내 명함 생성 성공";
+        String message = switch (result.resultType()) {
+            case DUPLICATE -> "이미 동일한 명함이 존재합니다";
+            case CLAIMED -> "기존의 종이 명함과 연결되었습니다";
+            case CREATED -> "내 명함 생성 성공";
+        };
         return ResponseEntity.ok(ApiResponse.success(message, result.card()));
     }
 

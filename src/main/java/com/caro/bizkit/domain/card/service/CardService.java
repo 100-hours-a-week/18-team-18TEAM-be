@@ -2,6 +2,7 @@ package com.caro.bizkit.domain.card.service;
 
 import com.caro.bizkit.domain.ai.event.CardInfoUpdatedEvent;
 import com.caro.bizkit.domain.card.dto.CardCreateResult;
+import com.caro.bizkit.domain.card.dto.CardCreateResult.ResultType;
 import com.caro.bizkit.domain.card.dto.CardRequest;
 import com.caro.bizkit.domain.card.dto.CardResponse;
 import java.time.LocalDate;
@@ -77,7 +78,7 @@ public class CardService {
                         principal.id(), request.name(), request.email(), request.company());
 
         if (duplicate.isPresent()) {
-            return new CardCreateResult(CardResponse.from(duplicate.get()), true);
+            return new CardCreateResult(CardResponse.from(duplicate.get()), ResultType.DUPLICATE);
         }
 
         Optional<Card> anonymous = StringUtils.hasText(request.position())
@@ -90,7 +91,7 @@ public class CardService {
 
         if (anonymous.isPresent()) {
             anonymous.get().setUser(user);
-            return new CardCreateResult(CardResponse.from(anonymous.get()), false);
+            return new CardCreateResult(CardResponse.from(anonymous.get()), ResultType.CLAIMED);
         }
 
         Card card = Card.create(
@@ -115,7 +116,7 @@ public class CardService {
             ));
         }
 
-        return new CardCreateResult(CardResponse.from(saved), false);
+        return new CardCreateResult(CardResponse.from(saved), ResultType.CREATED);
     }
 
     @Transactional
