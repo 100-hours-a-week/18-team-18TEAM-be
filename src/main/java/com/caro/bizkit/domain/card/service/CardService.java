@@ -1,6 +1,7 @@
 package com.caro.bizkit.domain.card.service;
 
 import com.caro.bizkit.domain.ai.event.CardInfoUpdatedEvent;
+import com.caro.bizkit.domain.card.dto.CardCreateResult;
 import com.caro.bizkit.domain.card.dto.CardRequest;
 import com.caro.bizkit.domain.card.dto.CardResponse;
 import java.time.LocalDate;
@@ -67,7 +68,7 @@ public class CardService {
     }
 
     @Transactional
-    public CardResponse createMyCard(UserPrincipal principal, CardRequest request) {
+    public CardCreateResult createMyCard(UserPrincipal principal, CardRequest request) {
         User user = userRepository.getReferenceById(principal.id());
         Card card = Card.create(
                 user,
@@ -91,7 +92,7 @@ public class CardService {
             ));
         }
 
-        return CardResponse.from(saved);
+        return new CardCreateResult(CardResponse.from(saved), false);
     }
 
     @Transactional
