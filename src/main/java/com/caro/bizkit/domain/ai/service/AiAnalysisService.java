@@ -159,8 +159,7 @@ public class AiAnalysisService {
                 card.getDepartment(),
                 card.getPosition(),
                 projectDtos,
-                awardDtos,
-                new AiJobAnalyzeRequest.OptionsDto(true, "ko", true)
+                awardDtos
         );
     }
 

@@ -12,8 +12,7 @@ public record AiJobAnalyzeRequest(
         String department,
         String position,
         List<ProjectDto> projects,
-        List<AwardDto> awards,
-        OptionsDto options
+        List<AwardDto> awards
 ) {
     public record ProjectDto(
             String name,
@@ -26,9 +25,4 @@ public record AiJobAnalyzeRequest(
             Integer year
     ) {}
 
-    public record OptionsDto(
-            @JsonProperty("enable_llm") Boolean enableLlm,
-            @JsonProperty("output_language") String outputLanguage,
-            @JsonProperty("strict_json") Boolean strictJson
-    ) {}
 }
