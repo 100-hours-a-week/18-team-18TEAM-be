@@ -25,6 +25,9 @@ public class AiAnalysisTask extends BaseTimeEntity {
     @Column(nullable = false)
     private AiAnalysisStatus status;
 
+    @Column(name = "ai_task_id")
+    private String aiTaskId;
+
     public static AiAnalysisTask create(User user) {
         AiAnalysisTask task = new AiAnalysisTask();
         task.user = user;
@@ -38,5 +41,9 @@ public class AiAnalysisTask extends BaseTimeEntity {
 
     public void fail() {
         this.status = AiAnalysisStatus.FAILED;
+    }
+
+    public void assignAiTaskId(String aiTaskId) {
+        this.aiTaskId = aiTaskId;
     }
 }
