@@ -15,8 +15,10 @@ concurrency:
 
 jobs:
   deploy:
-    if: github.actor != 'github-actions[bot]'
-    runs-on: ubuntu-24.04
+    if: |
+      github.actor != 'github-actions[bot]' &&
+      !startsWith(github.event.head_commit.message, 'chore(release)')
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 20
 
     env:
@@ -30,19 +32,15 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set Up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-
       - name: Set Up Node.js (for semantic-release)
         uses: actions/setup-node@v4
         with:
           node-version: "22"
 
       - name: Install release deps
-        run: npm install --no-audit --no-fund
+        run: |
+          sudo apt-get update
+          npm install --no-audit --no-fund
 
       - name: Semantic Release (dev)
         env:
@@ -57,12 +55,6 @@ jobs:
           VERSION=$(grep -E '^version=' gradle.properties | cut -d'=' -f2 | tr -d '[:space:]')
           echo "value=$VERSION" >> "$GITHUB_OUTPUT"
 
-      - name: Build (Gradle)
-        shell: bash
-        run: |
-          set -euo pipefail
-          ./gradlew clean bootJar -x test 
-
       - name: Configure AWS Credentials (Access Key)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -70,56 +62,105 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Upload Release Artifact to S3 (BE)
+      - name: Set up Java for Gradle build
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+
+      - name: Build Spring Boot jar
+        run: |
+          set -euo pipefail
+          chmod +x gradlew
+          ./gradlew --no-daemon clean bootJar -x test
+
+      - name: Install Buildah
         shell: bash
         run: |
           set -euo pipefail
-          VERSION=${{ steps.ver.outputs.value }}
+          sudo apt-get update
+          sudo apt-get install -y buildah
+
+      - name: Login to ECR
+        shell: bash
+        run: |
+          set -euo pipefail
+          AWS_REGION="${{ secrets.AWS_REGION }}"
+          AWS_ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+          ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+          ECR_REPOSITORY="${{ secrets.ECR_REPOSITORY_BE_DEV }}"
+          if [[ -z "${ECR_REPOSITORY}" ]]; then
+            ECR_REPOSITORY="bizkit-be-dev"
+          fi
+
+          aws ecr get-login-password --region "${AWS_REGION}" | \
+            buildah login --username AWS --password-stdin "${ECR_REGISTRY}"
+
+          if ! aws ecr describe-repositories --repository-names "${ECR_REPOSITORY}" --region "${AWS_REGION}" >/dev/null 2>&1; then
+            aws ecr create-repository --repository-name "${ECR_REPOSITORY}" --region "${AWS_REGION}" >/dev/null
+          fi
+
+          echo "ECR_REGISTRY=${ECR_REGISTRY}" >> "$GITHUB_ENV"
+          echo "ECR_REPOSITORY=${ECR_REPOSITORY}" >> "$GITHUB_ENV"
+
+      - name: Build and Push BE Container Image
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.ver.outputs.value }}"
+          IMAGE_TAG="dev-${VERSION}-${GITHUB_SHA::7}"
+          IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+
+          buildah bud --layers --arch arm64 -f Containerfile -t "${IMAGE_URI}" .
+          buildah push "${IMAGE_URI}"
+
+          echo "IMAGE_URI=${IMAGE_URI}" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_ENV"
+
+      - name: Build and Upload CodeDeploy bundle (BE container)
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          VERSION="${{ steps.ver.outputs.value }}"
           BUCKET="${{ secrets.S3_BUCKET }}"
 
-          JAR=$(ls -1 build/libs/*.jar | head -n 1)
-          RELEASE_KEY="${{ secrets.S3_PREFIX }}/${APP_STAGE}/releases/be/${VERSION}/bizkit-be-${VERSION}.jar"
+          if [[ -z "${VERSION}" ]]; then
+            echo "VERSION is empty" >&2
+            exit 1
+          fi
+          if [[ -z "${IMAGE_URI:-}" ]]; then
+            echo "IMAGE_URI is empty" >&2
+            exit 1
+          fi
 
-          aws s3 cp "$JAR" "s3://$BUCKET/$RELEASE_KEY" --cache-control no-cache
+          rm -rf bundle
+          mkdir -p bundle/deploy
 
-          echo "BUCKET=$BUCKET" >> "$GITHUB_ENV"
-          echo "RELEASE_KEY=$RELEASE_KEY" >> "$GITHUB_ENV"
+          cp deploy/appspec-container.yml bundle/appspec.yml
+          cp deploy/start-container.sh bundle/deploy/start-container.sh
+          cp deploy/deploy-be-container.sh bundle/deploy/deploy-be-container.sh
+          cp deploy/stop-container.sh bundle/deploy/stop-container.sh
+          cp deploy/validate-container.sh bundle/deploy/validate-container.sh
 
-      - name: Build CodeDeploy bundle (BE)
-        shell: bash
-        run: |
-          set -euo pipefail
-          VERSION=${{ steps.ver.outputs.value }}
+          cat > bundle/deploy/env.sh <<EOF_ENV
+          RELEASE_ID='${{ steps.ver.outputs.value }}'
+          APP_STAGE='${{ env.APP_STAGE }}'
+          IMAGE_URI='${IMAGE_URI}'
+          HEALTH_URL='${HEALTH_URL}'
+          EOF_ENV
 
-          rm -rf bundle && mkdir -p bundle/deploy bundle/codedeploy/be/hooks
-
-          # appspec + hooks
-          cp codedeploy/be/appspec.yml bundle/appspec.yml
-          
-          cp codedeploy/be/hooks/start.sh bundle/codedeploy/be/hooks/start.sh
-          cp codedeploy/be/hooks/stop.sh bundle/codedeploy/be/hooks/stop.sh
-          cp codedeploy/be/hooks/validate.sh bundle/codedeploy/be/hooks/validate.sh
-
-          cp deploy.sh bundle/deploy-be.sh
-
-          ARCHIVE_URL="$(aws s3 presign "s3://${BUCKET}/${RELEASE_KEY}" --expires-in 3600)"
-          ESCAPED_URL=$(printf "%s" "$ARCHIVE_URL" | sed "s/'/'\\\\''/g")
-
-          cat > bundle/codedeploy/be/env.sh <<EOF
-          RELEASE_ID='${VERSION}'
-          ARCHIVE_URL='${ESCAPED_URL}'
-          EOF
+          echo "[debug] bundle/deploy/env.sh"
+          cat bundle/deploy/env.sh
 
           (cd bundle && zip -r ../bundle.zip .)
           unzip -l bundle.zip
 
-      - name: Upload bundle.zip to S3
-        shell: bash
-        run: |
-          set -euo pipefail
-          VERSION=${{ steps.ver.outputs.value }}
           BUNDLE_KEY="${{ secrets.S3_PREFIX }}/${APP_STAGE}/codedeploy/be/${VERSION}/bundle-${{ github.run_id }}.zip"
           aws s3 cp bundle.zip "s3://$BUCKET/$BUNDLE_KEY"
+
+          echo "BUCKET=$BUCKET" >> "$GITHUB_ENV"
           echo "BUNDLE_KEY=$BUNDLE_KEY" >> "$GITHUB_ENV"
 
       - name: Create CodeDeploy deployment & wait
@@ -139,3 +180,47 @@ jobs:
           echo "deploymentId=$DEPLOY_ID"
           aws deploy wait deployment-successful --deployment-id "$DEPLOY_ID"
           echo "CodeDeploy SUCCESS"
+
+      - name: Notify Discord on failure
+        if: failure()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          MESSAGE="❌ BE Dev CD 실패 ❌
+          Repo: \`${{ github.repository }}\`
+          Branch: \`${{ github.head_ref || github.ref_name }}\`
+          Workflow: \`${{ github.workflow }}\`
+          Job: \`${{ github.job }}\`
+          Author: \`${{ github.actor }}\`
+          Stage: \`${APP_STAGE}\`
+          Version: \`${{ steps.ver.outputs.value }}\`
+          링크: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          JSON_MESSAGE=$(printf '%s\n' "$MESSAGE" | python3 -c 'import json,sys; print(json.dumps({"content": sys.stdin.read()}))')
+
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -d "$JSON_MESSAGE" \
+            "$DISCORD_WEBHOOK_URL"
+
+      - name: Notify Discord on success
+        if: success()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          MESSAGE="✅ BE Dev CD 성공 ✅
+          Repo: \`${{ github.repository }}\`
+          Branch: \`${{ github.head_ref || github.ref_name }}\`
+          Workflow: \`${{ github.workflow }}\`
+          Job: \`${{ github.job }}\`
+          Author: \`${{ github.actor }}\`
+          Stage: \`${APP_STAGE}\`
+          Version: \`${{ steps.ver.outputs.value }}\`
+          링크: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          JSON_MESSAGE=$(printf '%s\n' "$MESSAGE" | python3 -c 'import json,sys; print(json.dumps({"content": sys.stdin.read()}))')
+
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -d "$JSON_MESSAGE" \
+            "$DISCORD_WEBHOOK_URL"

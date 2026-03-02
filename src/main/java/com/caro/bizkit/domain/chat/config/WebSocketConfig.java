@@ -15,7 +15,10 @@ import org.springframework.web.socket.config.annotation.WebSocketTransportRegist
 public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     private final HttpHandshakeInterceptor httpHandshakeInterceptor;
+    private final WebSocketHandshakeHandler webSocketHandshakeHandler;
     private final StompAuthChannelInterceptor stompAuthChannelInterceptor;
+    private final StompErrorHandler stompErrorHandler;
+    private final LoggingWebSocketHandlerDecoratorFactory loggingDecoratorFactory;
 
     @Override
     public void configureMessageBroker(MessageBrokerRegistry registry) {
@@ -26,9 +29,11 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
 
     @Override
     public void registerStompEndpoints(StompEndpointRegistry registry) {
+        registry.setErrorHandler(stompErrorHandler);
         registry.addEndpoint("/ws")
                 .setAllowedOriginPatterns("*")
-                .addInterceptors(httpHandshakeInterceptor);
+                .addInterceptors(httpHandshakeInterceptor)
+                .setHandshakeHandler(webSocketHandshakeHandler);
     }
 
     @Override
@@ -39,6 +44,7 @@ public class WebSocketConfig implements WebSocketMessageBrokerConfigurer {
     @Override
     public void configureWebSocketTransport(WebSocketTransportRegistration registration) {
         registration.setSendTimeLimit(10_000)
-                .setSendBufferSizeLimit(512 * 1024);
+                .setSendBufferSizeLimit(512 * 1024)
+                .addDecoratorFactory(loggingDecoratorFactory);
     }
 }

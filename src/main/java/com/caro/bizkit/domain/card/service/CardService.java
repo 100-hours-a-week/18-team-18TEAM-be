@@ -1,6 +1,8 @@
 package com.caro.bizkit.domain.card.service;
 
 import com.caro.bizkit.domain.ai.event.CardInfoUpdatedEvent;
+import com.caro.bizkit.domain.card.dto.CardCreateResult;
+import com.caro.bizkit.domain.card.dto.CardCreateResult.ResultType;
 import com.caro.bizkit.domain.card.dto.CardRequest;
 import com.caro.bizkit.domain.card.dto.CardResponse;
 import java.time.LocalDate;
@@ -15,6 +17,7 @@ import com.caro.bizkit.domain.user.entity.User;
 import com.caro.bizkit.domain.user.repository.UserRepository;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import java.util.List;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
@@ -67,8 +70,30 @@ public class CardService {
     }
 
     @Transactional
-    public CardResponse createMyCard(UserPrincipal principal, CardRequest request) {
+    public CardCreateResult createMyCard(UserPrincipal principal, CardRequest request) {
+        Optional<Card> duplicate = StringUtils.hasText(request.position())
+                ? cardRepository.findFirstByUserIdAndDeletedAtIsNullAndNameAndEmailAndCompanyAndPositionOrderByCreatedAtDesc(
+                        principal.id(), request.name(), request.email(), request.company(), request.position())
+                : cardRepository.findFirstByUserIdAndDeletedAtIsNullAndNameAndEmailAndCompanyOrderByCreatedAtDesc(
+                        principal.id(), request.name(), request.email(), request.company());
+
+        if (duplicate.isPresent()) {
+            return new CardCreateResult(CardResponse.from(duplicate.get()), ResultType.DUPLICATE);
+        }
+
+        Optional<Card> anonymous = StringUtils.hasText(request.position())
+                ? cardRepository.findFirstByUserIsNullAndDeletedAtIsNullAndNameAndEmailAndCompanyAndPositionOrderByCreatedAtDesc(
+                        request.name(), request.email(), request.company(), request.position())
+                : cardRepository.findFirstByUserIsNullAndDeletedAtIsNullAndNameAndEmailAndCompanyOrderByCreatedAtDesc(
+                        request.name(), request.email(), request.company());
+
         User user = userRepository.getReferenceById(principal.id());
+
+        if (anonymous.isPresent()) {
+            anonymous.get().setUser(user);
+            return new CardCreateResult(CardResponse.from(anonymous.get()), ResultType.CLAIMED);
+        }
+
         Card card = Card.create(
                 user,
                 Card.newUuid(),
@@ -91,7 +116,7 @@ public class CardService {
             ));
         }
 
-        return CardResponse.from(saved);
+        return new CardCreateResult(CardResponse.from(saved), ResultType.CREATED);
     }
 
     @Transactional

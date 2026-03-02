@@ -2,6 +2,7 @@ package com.caro.bizkit.common.ApiResponse;
 
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Getter;
 import org.springframework.http.HttpStatusCode;
@@ -9,9 +10,11 @@ import org.springframework.http.HttpStatusCode;
 @JsonInclude(JsonInclude.Include.NON_NULL)
 @Getter
 public class ApiResponse<T> {
+    @Schema(hidden = true)
     private HttpStatusCode code;
     private String message;
     private T data;
+    @Schema(hidden = true)
     private Object pagination;
 
 

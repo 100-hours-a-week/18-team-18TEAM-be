@@ -1,9 +1,12 @@
 package com.caro.bizkit.domain.chat.service;
 
 import com.caro.bizkit.domain.chat.dto.ChatRoomCreateRequest;
+import com.caro.bizkit.domain.chat.dto.ChatRoomListResult;
 import com.caro.bizkit.domain.chat.dto.ChatRoomResponse;
 import com.caro.bizkit.domain.chat.entity.ChatParticipant;
 import com.caro.bizkit.domain.chat.entity.ChatRoom;
+import com.caro.bizkit.domain.card.entity.Card;
+import com.caro.bizkit.domain.card.repository.CardRepository;
 import com.caro.bizkit.domain.chat.repository.ChatMessageRepository;
 import com.caro.bizkit.domain.chat.repository.ChatParticipantRepository;
 import com.caro.bizkit.domain.chat.repository.ChatRoomRepository;
@@ -17,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -31,6 +35,7 @@ public class ChatRoomService {
     private final ChatRoomRepository chatRoomRepository;
     private final ChatParticipantRepository chatParticipantRepository;
     private final ChatMessageRepository chatMessageRepository;
+    private final CardRepository cardRepository;
     private final UserRepository userRepository;
     private final StringRedisTemplate redisTemplate;
 
@@ -49,6 +54,8 @@ public class ChatRoomService {
         User targetUser = userRepository.findByIdAndDeletedAtIsNull(targetId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "대상 사용자를 찾을 수 없습니다."));
 
+        String targetCardName = getLatestCardName(targetId);
+
         // 기존 방 조회 (나간 사람 포함)
         ChatParticipant existing = chatParticipantRepository.findCommonRoomParticipant(myId, targetId)
                 .orElse(null);
@@ -62,7 +69,7 @@ public class ChatRoomService {
             if (myParticipant.hasLeft()) {
                 myParticipant.rejoin();
             }
-            return ChatRoomResponse.from(room, targetUser, 0);
+            return ChatRoomResponse.from(room, targetUser, targetCardName, 0);
         }
 
         // Redis 분산 락으로 중복 생성 방지
@@ -87,7 +94,7 @@ public class ChatRoomService {
                 if (myParticipant.hasLeft()) {
                     myParticipant.rejoin();
                 }
-                return ChatRoomResponse.from(room, targetUser, 0);
+                return ChatRoomResponse.from(room, targetUser, targetCardName, 0);
             }
 
             User myUser = userRepository.findByIdAndDeletedAtIsNull(myId)
@@ -101,19 +108,26 @@ public class ChatRoomService {
             chatParticipantRepository.save(myParticipant);
             chatParticipantRepository.save(targetParticipant);
 
-            return ChatRoomResponse.from(room, targetUser, 0);
+            return ChatRoomResponse.from(room, targetUser, targetCardName, 0);
         } finally {
             redisTemplate.delete(lockKey);
         }
     }
 
     @Transactional(readOnly = true)
-    public List<ChatRoomResponse> getMyRooms(UserPrincipal principal) {
+    public ChatRoomListResult getMyRooms(UserPrincipal principal, Integer size, Integer cursorId) {
         Integer myId = principal.id();
-        List<ChatParticipant> myParticipants = chatParticipantRepository.findByUserIdAndLeftAtIsNull(myId);
+        int limit = normalizeSize(size);
+
+        List<ChatParticipant> myParticipants = findMyParticipants(myId, cursorId, limit + 1);
+
+        boolean hasNext = myParticipants.size() > limit;
+        if (hasNext) {
+            myParticipants = myParticipants.subList(0, limit);
+        }
 
         if (myParticipants.isEmpty()) {
-            return List.of();
+            return new ChatRoomListResult(List.of(), null, false);
         }
 
         // 배치 COUNT 쿼리로 unread 일괄 조회
@@ -142,19 +156,13 @@ public class ChatRoomService {
                 continue;
             }
 
+            String cardName = getLatestCardName(otherUser.getId());
             int unread = unreadMap.getOrDefault(room.getId(), 0);
-            responses.add(ChatRoomResponse.from(room, otherUser, unread));
+            responses.add(ChatRoomResponse.from(room, otherUser, cardName, unread));
         }
 
-        // 최신 메시지순 정렬
-        responses.sort((a, b) -> {
-            if (a.latest_message_created_at() == null && b.latest_message_created_at() == null) return 0;
-            if (a.latest_message_created_at() == null) return 1;
-            if (b.latest_message_created_at() == null) return -1;
-            return b.latest_message_created_at().compareTo(a.latest_message_created_at());
-        });
-
-        return responses;
+        Integer nextCursorId = myParticipants.isEmpty() ? null : myParticipants.getLast().getChatRoom().getId();
+        return new ChatRoomListResult(responses, nextCursorId, hasNext);
     }
 
     @Transactional
@@ -168,5 +176,25 @@ public class ChatRoomService {
         }
 
         participant.leave();
+    }
+
+    private List<ChatParticipant> findMyParticipants(Integer userId, Integer cursorId, int limit) {
+        if (cursorId == null) {
+            return chatParticipantRepository.findMyRooms(userId, PageRequest.of(0, limit));
+        }
+        return chatParticipantRepository.findMyRoomsWithCursor(userId, cursorId, PageRequest.of(0, limit));
+    }
+
+    private String getLatestCardName(Integer userId) {
+        return cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByStartDateDesc(userId)
+                .map(Card::getName)
+                .orElse(null);
+    }
+
+    private int normalizeSize(Integer size) {
+        if (size == null || size < 1) {
+            return 20;
+        }
+        return size;
     }
 }

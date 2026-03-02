@@ -1,6 +1,7 @@
 package com.caro.bizkit.domain.card.controller;
 
 import com.caro.bizkit.common.ApiResponse.ApiResponse;
+import com.caro.bizkit.domain.card.dto.CardCreateResult;
 import com.caro.bizkit.domain.card.dto.CardRequest;
 import com.caro.bizkit.domain.card.dto.CardResponse;
 import java.util.Map;
@@ -101,8 +102,13 @@ public class CardController {
             @AuthenticationPrincipal UserPrincipal user,
             @Valid @RequestBody CardRequest request
     ) {
-        CardResponse card = cardService.createMyCard(user, request);
-        return ResponseEntity.ok(ApiResponse.success("내 명함 생성 성공", card));
+        CardCreateResult result = cardService.createMyCard(user, request);
+        String message = switch (result.resultType()) {
+            case DUPLICATE -> "이미 동일한 명함이 존재합니다";
+            case CLAIMED -> "기존의 종이 명함과 연결되었습니다";
+            case CREATED -> "내 명함 생성 성공";
+        };
+        return ResponseEntity.ok(ApiResponse.success(message, result.card()));
     }
 
     @PatchMapping("/{card_id}")
