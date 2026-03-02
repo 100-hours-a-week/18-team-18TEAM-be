@@ -79,6 +79,10 @@ echo "[deploy-be-container] previous_release=${PREV_RELEASE_ID:-none}"
 echo "[deploy-be-container] previous_image=${PREV_IMAGE_URI:-none}"
 echo "[deploy-be-container] container_name=${CONTAINER_NAME}"
 echo "[deploy-be-container] health_check_url=${HEALTH_CHECK_URL}"
+if [[ -f "${ENV_FILE}" ]]; then
+  echo "[deploy-be-container] env file path=${ENV_FILE}"
+  env | grep -E 'SPRING_|AWS_|REDIS_|KAKAO_|JWT_|DATABASE_URL|DATABASE_|AI_|CORS_|PROFILE|SPRING_PROFILES_ACTIVE|SPRING_DATASOURCE|REDIS_HOST|REDIS_PASSWORD' | sed -e '/PASSWORD/d' -e '/SECRET/d' || true
+fi
 
 echo "[deploy-be-container] stopping legacy services ${LEGACY_SERVICES} (if exist)"
 for service in ${LEGACY_SERVICES//,/ }; do
@@ -122,6 +126,8 @@ if [[ "${ok}" -eq 1 ]]; then
 fi
 
 echo "[deploy-be-container] FAILED healthcheck. rollback start." >&2
+as_ubuntu podman ps -a || true
+as_ubuntu podman inspect "${CONTAINER_NAME}" --format 'pre-rollback ID={{.ID}} State={{.State.Status}} ExitCode={{.State.ExitCode}} OOMKilled={{.State.OOMKilled}} StartedAt={{.State.StartedAt}} FinishedAt={{.State.FinishedAt}} Error={{.State.Error}}' || true
 as_ubuntu podman logs --tail 200 "${CONTAINER_NAME}" || true
 as_ubuntu systemctl --user disable --now "${UNIT_NAME}" >/dev/null 2>&1 || true
 as_ubuntu podman rm -f "${CONTAINER_NAME}" >/dev/null 2>&1 || true
@@ -147,6 +153,8 @@ if [[ -n "${PREV_IMAGE_URI}" ]]; then
     fi
     sleep 1
   done
+  as_ubuntu podman inspect "${CONTAINER_NAME}" --format 'rollback ID={{.ID}} State={{.State.Status}} ExitCode={{.State.ExitCode}} OOMKilled={{.State.OOMKilled}} Error={{.State.Error}}' || true
+  as_ubuntu podman logs --tail 200 "${CONTAINER_NAME}" || true
 fi
 
 echo "[deploy-be-container] ROLLBACK FAILED" >&2
