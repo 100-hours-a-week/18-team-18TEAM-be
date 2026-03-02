@@ -111,13 +111,13 @@ jobs:
         run: |
           set -euo pipefail
           VERSION="${{ steps.ver.outputs.value }}"
-          IMAGE_TAG="prod-${VERSION}-${GITHUB_SHA::7}"
+          IMAGE_TAG_BASE="prod-${VERSION}-${GITHUB_SHA::7}"
+          IMAGE_TAG="${IMAGE_TAG_BASE}-${GITHUB_RUN_NUMBER}-${GITHUB_RUN_ATTEMPT}"
           IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
 
           if aws ecr describe-images --repository-name "${ECR_REPOSITORY}" \
             --image-ids imageTag="${IMAGE_TAG}" \
             --region "${{ secrets.AWS_REGION }}" >/dev/null 2>&1; then
-            echo "IMAGE_EXISTS=true" >> "$GITHUB_ENV"
             echo "Image already exists, skip build/push: ${IMAGE_URI}"
           else
             buildah bud --layers --arch arm64 -f Containerfile -t "${IMAGE_URI}" .
@@ -125,14 +125,11 @@ jobs:
               if aws ecr describe-images --repository-name "${ECR_REPOSITORY}" \
                 --image-ids imageTag="${IMAGE_TAG}" \
                 --region "${{ secrets.AWS_REGION }}" >/dev/null 2>&1; then
-                echo "IMAGE_EXISTS=true" >> "$GITHUB_ENV"
                 echo "Image was concurrently created by another run; reuse existing tag."
               else
                 echo "buildah push failed for ${IMAGE_URI}" >&2
                 exit 1
               fi
-            else
-              echo "IMAGE_EXISTS=false" >> "$GITHUB_ENV"
             fi
           fi
 
