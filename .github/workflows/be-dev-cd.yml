@@ -38,7 +38,10 @@ jobs:
           node-version: "22"
 
       - name: Install release deps
-        run: npm install --no-audit --no-fund
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-user-static
+          npm install --no-audit --no-fund
 
       - name: Semantic Release (dev)
         env:
@@ -98,7 +101,7 @@ jobs:
           IMAGE_TAG="dev-${VERSION}-${GITHUB_SHA::7}"
           IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
 
-          buildah bud --layers --arch arm64 -f Containerfile -t "${IMAGE_URI}" .
+          buildah bud --layers --arch arm64 --platform linux/arm64 -f Containerfile -t "${IMAGE_URI}" .
           buildah push "${IMAGE_URI}"
 
           echo "IMAGE_URI=${IMAGE_URI}" >> "$GITHUB_ENV"
