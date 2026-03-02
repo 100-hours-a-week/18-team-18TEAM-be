@@ -24,4 +24,5 @@ public record AiJobAnalyzeRequest(
             String name,
             Integer year
     ) {}
+
 }
