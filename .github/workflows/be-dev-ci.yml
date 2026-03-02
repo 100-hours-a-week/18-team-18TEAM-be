@@ -53,3 +53,20 @@ jobs:
 
           JSON_MESSAGE=$(printf '%s\n' "$MESSAGE" | python3 -c 'import json,sys; print(json.dumps({"content": sys.stdin.read()}))')
           curl -X POST -H "Content-Type: application/json" -d "$JSON_MESSAGE" "$DISCORD_WEBHOOK_URL"
+
+      - name: Notify Discord on success
+        if: success()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          MESSAGE="✅ BE Dev PR CI 성공 ✅
+          Repo: \`${{ github.repository }}\`
+          Branch: \`${{ github.head_ref || github.ref_name }}\`
+          Workflow: \`${{ github.workflow }}\`
+          Job: \`${{ github.job }}\`
+          Author: \`${{ github.actor }}\`
+          Stage: \`${APP_STAGE}\`
+          링크: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          JSON_MESSAGE=$(printf '%s\n' "$MESSAGE" | python3 -c 'import json,sys; print(json.dumps({"content": sys.stdin.read()}))')
+          curl -X POST -H "Content-Type: application/json" -d "$JSON_MESSAGE" "$DISCORD_WEBHOOK_URL"
