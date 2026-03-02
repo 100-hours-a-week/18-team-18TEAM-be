@@ -99,6 +99,7 @@ as_ubuntu podman create \
   --name "${CONTAINER_NAME}" \
   --replace \
   --env-file "${ENV_FILE}" \
+  --network=host \
   -p "${HOST_PORT}:${CONTAINER_PORT}" \
   "${IMAGE_URI}"
 
@@ -139,6 +140,7 @@ if [[ -n "${PREV_IMAGE_URI}" ]]; then
     --name "${CONTAINER_NAME}" \
     --replace \
     --env-file "${ENV_FILE}" \
+    --network=host \
     -p "${HOST_PORT}:${CONTAINER_PORT}" \
     "${PREV_IMAGE_URI}"
 
