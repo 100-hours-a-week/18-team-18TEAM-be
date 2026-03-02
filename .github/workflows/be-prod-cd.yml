@@ -30,12 +30,6 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Set Up Java
-        uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-
       - name: Set Up Node.js (for semantic-release)
         uses: actions/setup-node@v4
         with:
@@ -61,23 +55,6 @@ jobs:
           fi
           echo "value=$VERSION" >> "$GITHUB_OUTPUT"
 
-      # - name: Integration Test
-      #   shell: bash
-      #   run: |
-      #     set -euo pipefail
-      #     if ./gradlew -q tasks --all | grep -q "^integrationTest"; then
-      #       echo "[cd] integrationTest task found -> run integrationTest"
-      #       ./gradlew --no-daemon clean integrationTest --build-cache
-      #     else
-      #       echo "[cd] integrationTest task not found -> skip"
-      #     fi
-
-      - name: Build (Gradle)
-        shell: bash
-        run: |
-          set -euo pipefail
-          ./gradlew clean bootJar -x test
-
       - name: Configure AWS Credentials (Access Key)
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -85,50 +62,84 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
-      - name: Upload Release Artifact to S3 (BE)
+      - name: Install Buildah
         shell: bash
         run: |
           set -euo pipefail
-          VERSION=${{ steps.ver.outputs.value }}
-          BUCKET="${{ secrets.S3_BUCKET }}"
+          sudo apt-get update
+          sudo apt-get install -y buildah
 
-          JAR=$(ls -1 build/libs/*.jar | head -n 1)
-          if [[ -z "$JAR" ]]; then
-            echo "No jar found in build/libs" >&2
-            ls -al build/libs || true
-            exit 1
+      - name: Login to ECR
+        shell: bash
+        run: |
+          set -euo pipefail
+          AWS_REGION="${{ secrets.AWS_REGION }}"
+          AWS_ACCOUNT_ID="$(aws sts get-caller-identity --query Account --output text)"
+          ECR_REGISTRY="${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com"
+
+          ECR_REPOSITORY="${{ secrets.ECR_REPOSITORY_BE_PROD }}"
+          if [[ -z "${ECR_REPOSITORY}" ]]; then
+            ECR_REPOSITORY="bizkit-be-prod"
           fi
 
-          RELEASE_KEY="${{ secrets.S3_PREFIX }}/${APP_STAGE}/releases/be/${VERSION}/bizkit-be-${VERSION}.jar"
+          aws ecr get-login-password --region "${AWS_REGION}" | \
+            buildah login --username AWS --password-stdin "${ECR_REGISTRY}"
 
-          aws s3 cp "$JAR" "s3://$BUCKET/$RELEASE_KEY" --cache-control no-cache
+          if ! aws ecr describe-repositories --repository-names "${ECR_REPOSITORY}" --region "${AWS_REGION}" >/dev/null 2>&1; then
+            aws ecr create-repository --repository-name "${ECR_REPOSITORY}" --region "${AWS_REGION}" >/dev/null
+          fi
 
-          echo "BUCKET=$BUCKET" >> "$GITHUB_ENV"
-          echo "RELEASE_KEY=$RELEASE_KEY" >> "$GITHUB_ENV"
+          echo "ECR_REGISTRY=${ECR_REGISTRY}" >> "$GITHUB_ENV"
+          echo "ECR_REPOSITORY=${ECR_REPOSITORY}" >> "$GITHUB_ENV"
+
+      - name: Build and Push BE Container Image
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.ver.outputs.value }}"
+          IMAGE_TAG="prod-${VERSION}-${GITHUB_SHA::7}"
+          IMAGE_URI="${ECR_REGISTRY}/${ECR_REPOSITORY}:${IMAGE_TAG}"
+
+          buildah bud --layers -f Containerfile -t "${IMAGE_URI}" .
+          buildah push "${IMAGE_URI}"
+
+          echo "IMAGE_URI=${IMAGE_URI}" >> "$GITHUB_ENV"
+          echo "IMAGE_TAG=${IMAGE_TAG}" >> "$GITHUB_ENV"
 
       - name: Build CodeDeploy bundle (BE)
         shell: bash
         run: |
           set -euo pipefail
           VERSION=${{ steps.ver.outputs.value }}
+          BUCKET="${{ secrets.S3_BUCKET }}"
 
-          rm -rf bundle && mkdir -p bundle/deploy bundle/codedeploy/be/hooks
+          if [[ -z "${VERSION}" ]]; then
+            echo "VERSION is empty" >&2
+            exit 1
+          fi
 
-          cp codedeploy/be/appspec.yml bundle/appspec.yml
-          cp codedeploy/be/hooks/start.sh bundle/codedeploy/be/hooks/start.sh
-          cp codedeploy/be/hooks/stop.sh bundle/codedeploy/be/hooks/stop.sh
-          cp codedeploy/be/hooks/validate.sh bundle/codedeploy/be/hooks/validate.sh
+          if [[ -z "${IMAGE_URI:-}" ]]; then
+            echo "IMAGE_URI is empty" >&2
+            exit 1
+          fi
 
-          cp deploy.sh bundle/deploy-be.sh
+          rm -rf bundle && mkdir -p bundle/deploy
 
-          ARCHIVE_URL="$(aws s3 presign "s3://${BUCKET}/${RELEASE_KEY}" --expires-in 3600)"
-          ESCAPED_URL=$(printf "%s" "$ARCHIVE_URL" | sed "s/'/'\\\\''/g")
+          cp deploy/appspec-container.yml bundle/appspec.yml
+          cp deploy/start-container.sh bundle/deploy/start-container.sh
+          cp deploy/stop-container.sh bundle/deploy/stop-container.sh
+          cp deploy/validate-container.sh bundle/deploy/validate-container.sh
+          cp deploy/deploy-be-container.sh bundle/deploy/deploy-be-container.sh
 
-          cat > bundle/codedeploy/be/env.sh <<EOF
-          RELEASE_ID='${VERSION}'
-          ARCHIVE_URL='${ESCAPED_URL}'
+          cat > bundle/deploy/env.sh <<EOF_ENV
+          RELEASE_ID='${{ steps.ver.outputs.value }}'
+          APP_STAGE='${{ env.APP_STAGE }}'
+          IMAGE_URI='${IMAGE_URI}'
           HEALTH_URL='${HEALTH_URL}'
-          EOF
+          EOF_ENV
+
+          echo "[debug] bundle/deploy/env.sh"
+          cat bundle/deploy/env.sh
 
           (cd bundle && zip -r ../bundle.zip .)
           unzip -l bundle.zip
@@ -138,6 +149,7 @@ jobs:
         run: |
           set -euo pipefail
           VERSION=${{ steps.ver.outputs.value }}
+          BUCKET="${{ secrets.S3_BUCKET }}"
 
           BUNDLE_KEY="${{ secrets.S3_PREFIX }}/${APP_STAGE}/codedeploy/be/${VERSION}/bundle-${{ github.run_id }}.zip"
           aws s3 cp bundle.zip "s3://$BUCKET/$BUNDLE_KEY"
@@ -166,11 +178,36 @@ jobs:
         env:
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
         run: |
-          MESSAGE="BE PROD CD 실패
+          MESSAGE="❌ BE PROD CD 실패 ❌
           Repo: \`${{ github.repository }}\`
-          Branch: \`${{ github.ref_name }}\`
+          Branch: \`${{ github.head_ref || github.ref_name }}\`
+          Workflow: \`${{ github.workflow }}\`
+          Job: \`${{ github.job }}\`
+          Author: \`${{ github.actor }}\`
+          Stage: \`${APP_STAGE}\`
           Version: \`${{ steps.ver.outputs.value }}\`
-          Run: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+          링크: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
 
           JSON_MESSAGE=$(printf '%s\n' "$MESSAGE" | python3 -c 'import json,sys; print(json.dumps({"content": sys.stdin.read()}))')
           curl -X POST -H "Content-Type: application/json" -d "$JSON_MESSAGE" "$DISCORD_WEBHOOK_URL"
+
+      - name: Notify Discord on success
+        if: success()
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+        run: |
+          MESSAGE="✅ BE PROD CD 성공 ✅
+          Repo: \`${{ github.repository }}\`
+          Branch: \`${{ github.head_ref || github.ref_name }}\`
+          Workflow: \`${{ github.workflow }}\`
+          Job: \`${{ github.job }}\`
+          Author: \`${{ github.actor }}\`
+          Stage: \`${APP_STAGE}\`
+          Version: \`${{ steps.ver.outputs.value }}\`
+          링크: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          JSON_MESSAGE=$(printf '%s\n' "$MESSAGE" | python3 -c 'import json,sys; print(json.dumps({"content": sys.stdin.read()}))')
+          curl -X POST \
+            -H "Content-Type: application/json" \
+            -d "$JSON_MESSAGE" \
+            "$DISCORD_WEBHOOK_URL"
