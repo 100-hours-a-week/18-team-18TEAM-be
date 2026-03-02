@@ -125,6 +125,7 @@ jobs:
 
           VERSION="${{ steps.ver.outputs.value }}"
           BUCKET="${{ secrets.S3_BUCKET }}"
+          S3_PREFIX="${{ secrets.S3_PREFIX }}"
 
           if [[ -z "${VERSION}" ]]; then
             echo "VERSION is empty" >&2
@@ -133,6 +134,13 @@ jobs:
           if [[ -z "${IMAGE_URI:-}" ]]; then
             echo "IMAGE_URI is empty" >&2
             exit 1
+          fi
+          if [[ -z "${BUCKET}" ]]; then
+            echo "S3_BUCKET secret is required" >&2
+            exit 1
+          fi
+          if [[ -z "${S3_PREFIX}" ]]; then
+            S3_PREFIX="artifacts"
           fi
 
           rm -rf bundle
@@ -157,7 +165,7 @@ jobs:
           (cd bundle && zip -r ../bundle.zip .)
           unzip -l bundle.zip
 
-          BUNDLE_KEY="${{ secrets.S3_PREFIX }}/${APP_STAGE}/codedeploy/be/${VERSION}/bundle-${{ github.run_id }}.zip"
+          BUNDLE_KEY="${S3_PREFIX}/${APP_STAGE}/codedeploy/be/${VERSION}/bundle-${{ github.run_id }}.zip"
           aws s3 cp bundle.zip "s3://$BUCKET/$BUNDLE_KEY"
 
           echo "BUCKET=$BUCKET" >> "$GITHUB_ENV"
@@ -169,6 +177,10 @@ jobs:
           set -euo pipefail
           APP="${{ secrets.CODEDEPLOY_APP_BE_DEV }}"
           DG="${{ secrets.CODEDEPLOY_DG_BE_DEV }}"
+          : "${BUCKET:?S3 bucket is required (set S3_BUCKET secret)}"
+          : "${BUNDLE_KEY:?BUNDLE_KEY is required}"
+          echo "BUCKET=$BUCKET"
+          echo "BUNDLE_KEY=$BUNDLE_KEY"
 
           DEPLOY_ID="$(aws deploy create-deployment \
             --application-name "$APP" \
