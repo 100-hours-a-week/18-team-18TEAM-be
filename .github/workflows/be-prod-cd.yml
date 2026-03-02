@@ -16,7 +16,7 @@ concurrency:
 jobs:
   deploy:
     if: github.actor != 'github-actions[bot]'
-    runs-on: ubuntu-24.04
+    runs-on: ubuntu-24.04-arm
     timeout-minutes: 20
 
     env:
