@@ -75,7 +75,6 @@ public class AuthController {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "리프레시 토큰이 없습니다.");
         }
 
-        log.info("토큰 재발행 성공");
         return ResponseEntity.ok(ApiResponse.success("토큰 갱신 성공", authService.refresh(refreshRequest.refreshToken())));
     }
 
