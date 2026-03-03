@@ -44,13 +44,13 @@ public class Card extends BaseTimeEntity {
     @Column(length = 15)
     private String linedNumber;
 
-    @Column(length = 20, nullable = false)
+    @Column(length = 255, nullable = false)
     private String company;
 
-    @Column(length = 20)
+    @Column(length = 100)
     private String position;
 
-    @Column(length = 20)
+    @Column(length = 255)
     private String department;
 
     @Column(nullable = false)

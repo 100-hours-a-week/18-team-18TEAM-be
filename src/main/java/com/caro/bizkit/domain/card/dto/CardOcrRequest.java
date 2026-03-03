@@ -13,11 +13,11 @@ public record CardOcrRequest(
         @Email
         String email,
         @NotBlank
-        @Size(max = 20)
+        @Size(max = 255)
         String company,
-        @Size(max = 20)
+        @Size(max = 100)
         String position,
-        @Size(max = 20)
+        @Size(max = 255)
         String department,
         @Pattern(regexp = "^010-\\d{4}-\\d{4}$", message = "전화번호 형식이 올바르지 않습니다")
         String phone_number,
