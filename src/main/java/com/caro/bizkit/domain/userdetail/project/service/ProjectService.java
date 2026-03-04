@@ -61,7 +61,7 @@ public class ProjectService {
         );
         Project saved = projectRepository.save(project);
 
-        cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByStartDateDesc(principal.id())
+        cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByIsProgressDescStartDateDesc(principal.id())
                 .ifPresent(card -> eventPublisher.publishEvent(new CardInfoUpdatedEvent(
                         card.getId(), "CARD", LocalDateTime.now()
                 )));
@@ -85,7 +85,7 @@ public class ProjectService {
 
         applyUpdates(project, request);
 
-        cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByStartDateDesc(principal.id())
+        cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByIsProgressDescStartDateDesc(principal.id())
                 .ifPresent(card -> eventPublisher.publishEvent(new CardInfoUpdatedEvent(
                         card.getId(), "CARD", LocalDateTime.now()
                 )));
@@ -150,7 +150,7 @@ public class ProjectService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Project not found"));
         projectRepository.delete(project);
 
-        cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByStartDateDesc(principal.id())
+        cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByIsProgressDescStartDateDesc(principal.id())
                 .ifPresent(card -> eventPublisher.publishEvent(new CardInfoUpdatedEvent(
                         card.getId(), "CARD", LocalDateTime.now()
                 )));

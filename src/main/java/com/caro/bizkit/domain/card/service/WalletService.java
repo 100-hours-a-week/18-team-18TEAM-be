@@ -74,7 +74,7 @@ public class WalletService {
     @Transactional
     public CardResponse createAnonymousCard(UserPrincipal principal, CardOcrRequest request) {
         // ① 본인 명함 여부 확인
-        String baseName = cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByStartDateDesc(principal.id())
+        String baseName = cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByIsProgressDescStartDateDesc(principal.id())
                 .map(Card::getName)
                 .orElse(principal.name());
         if (request.name().equals(baseName) && request.email().equals(principal.email())) {
