@@ -194,7 +194,7 @@ public class ChatRoomService {
         User targetUser = userRepository.findByIdAndDeletedAtIsNull(targetUserId)
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다"));
 
-        if (!chatParticipantRepository.existsSharedActiveRoom(myId, targetUserId)) {
+        if (!chatParticipantRepository.existsSharedRoom(myId, targetUserId)) {
             throw new CustomException(HttpStatus.FORBIDDEN, "채팅 상대의 프로필을 조회할 권한이 없습니다");
         }
 

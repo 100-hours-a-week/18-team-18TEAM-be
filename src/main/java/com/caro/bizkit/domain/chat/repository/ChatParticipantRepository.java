@@ -27,10 +27,10 @@ public interface ChatParticipantRepository extends JpaRepository<ChatParticipant
     @Query("SELECT CASE WHEN EXISTS (" +
             "SELECT cp1 FROM ChatParticipant cp1 " +
             "JOIN ChatParticipant cp2 ON cp1.chatRoom.id = cp2.chatRoom.id " +
-            "WHERE cp1.user.id = :userId1 AND cp1.leftAt IS NULL " +
-            "AND cp2.user.id = :userId2 AND cp2.leftAt IS NULL" +
+            "WHERE cp1.user.id = :userId1 " +
+            "AND cp2.user.id = :userId2" +
             ") THEN true ELSE false END")
-    boolean existsSharedActiveRoom(@Param("userId1") Integer userId1, @Param("userId2") Integer userId2);
+    boolean existsSharedRoom(@Param("userId1") Integer userId1, @Param("userId2") Integer userId2);
 
     @Query("SELECT cp FROM ChatParticipant cp " +
             "JOIN FETCH cp.chatRoom " +
