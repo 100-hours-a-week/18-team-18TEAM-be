@@ -10,4 +10,5 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 public class AiClientProperties {
     private String baseUrl;
     private int timeoutSeconds;
+    private int pollIntervalSeconds;
 }

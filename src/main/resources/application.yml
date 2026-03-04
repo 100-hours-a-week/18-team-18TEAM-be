@@ -68,6 +68,7 @@ ai:
   client:
     base-url: ${AI_SERVER_URL:http://localhost:8000}
     timeout-seconds: ${AI_TIMEOUT_SECONDS:60}
+    poll-interval-seconds: ${AI_POLL_INTERVAL_SECONDS:3}
 
 metrics:
   http:
