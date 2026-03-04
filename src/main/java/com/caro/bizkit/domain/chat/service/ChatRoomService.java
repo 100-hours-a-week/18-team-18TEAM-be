@@ -186,7 +186,7 @@ public class ChatRoomService {
     }
 
     private String getLatestCardName(Integer userId) {
-        return cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByStartDateDesc(userId)
+        return cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByIsProgressDescStartDateDesc(userId)
                 .map(Card::getName)
                 .orElse(null);
     }
