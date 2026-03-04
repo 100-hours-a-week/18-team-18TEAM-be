@@ -35,7 +35,6 @@ import java.util.concurrent.TimeUnit;
 public class AiAnalysisService {
 
     private static final long DEBOUNCE_SECONDS = 10;
-    private static final long POLL_INTERVAL_SECONDS = 3;
 
     private final ConcurrentHashMap<Integer, ScheduledFuture<?>> pendingTasks = new ConcurrentHashMap<>();
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
@@ -106,7 +105,7 @@ public class AiAnalysisService {
         // ④ polling 시작
         long deadline = System.currentTimeMillis() + properties.getTimeoutSeconds() * 1000L;
         scheduler.schedule(() -> poll(cardId, taskDbId[0], aiTaskId, deadline),
-                POLL_INTERVAL_SECONDS, TimeUnit.SECONDS);
+                properties.getPollIntervalSeconds(), TimeUnit.SECONDS);
     }
 
     private void poll(Integer cardId, Integer taskDbId, String aiTaskId, long deadline) {
@@ -134,7 +133,7 @@ public class AiAnalysisService {
                         taskRepository.findById(taskDbId).ifPresent(AiAnalysisTask::fail));
             } else {
                 scheduler.schedule(() -> poll(cardId, taskDbId, aiTaskId, deadline),
-                        POLL_INTERVAL_SECONDS, TimeUnit.SECONDS);
+                        properties.getPollIntervalSeconds(), TimeUnit.SECONDS);
             }
         } catch (Exception e) {
             log.error("Card {} polling 오류: {}", cardId, e.getMessage());
