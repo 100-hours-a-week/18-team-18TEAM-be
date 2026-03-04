@@ -61,7 +61,7 @@ public class ActivityService {
         );
         Activity saved = activityRepository.save(activity);
 
-        cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByStartDateDesc(principal.id())
+        cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByIsProgressDescStartDateDesc(principal.id())
                 .ifPresent(card -> eventPublisher.publishEvent(new CardInfoUpdatedEvent(
                         card.getId(), "CARD", LocalDateTime.now()
                 )));
@@ -85,7 +85,7 @@ public class ActivityService {
 
         applyUpdates(activity, request);
 
-        cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByStartDateDesc(principal.id())
+        cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByIsProgressDescStartDateDesc(principal.id())
                 .ifPresent(card -> eventPublisher.publishEvent(new CardInfoUpdatedEvent(
                         card.getId(), "CARD", LocalDateTime.now()
                 )));
@@ -125,7 +125,7 @@ public class ActivityService {
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Activity not found"));
         activityRepository.delete(activity);
 
-        cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByStartDateDesc(principal.id())
+        cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByIsProgressDescStartDateDesc(principal.id())
                 .ifPresent(card -> eventPublisher.publishEvent(new CardInfoUpdatedEvent(
                         card.getId(), "CARD", LocalDateTime.now()
                 )));
