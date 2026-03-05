@@ -16,12 +16,13 @@ public interface UserCardRepository extends JpaRepository<UserCard, Integer> {
     List<UserCard> findByUserIdAndIdLessThanOrderByCreatedAtDescIdDesc(Integer userId, Integer cursorId, Pageable pageable);
 
     @Query(value = """
-            select uc.* from user_card uc
-            join card c on uc.card_id = c.id
-            where uc.user_id = :userId
-              and match(c.name, c.company, c.email, c.position, c.phone_number, c.department)
-                  against (:keyword in boolean mode)
-            order by uc.created_at desc, uc.id desc
+            SELECT uc.*
+            FROM user_card uc
+            STRAIGHT_JOIN card c ON c.id = uc.card_id
+            WHERE uc.user_id = :userId
+              AND MATCH(c.name, c.company, c.email, c.position, c.phone_number, c.department)
+                  AGAINST(:keyword IN BOOLEAN MODE)
+            ORDER BY uc.created_at DESC, uc.id DESC
             """, nativeQuery = true)
     List<UserCard> searchCollectedCards(
             @Param("userId") Integer userId,
