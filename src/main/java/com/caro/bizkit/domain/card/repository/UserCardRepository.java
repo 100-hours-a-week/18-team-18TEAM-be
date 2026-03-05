@@ -12,17 +12,23 @@ public interface UserCardRepository extends JpaRepository<UserCard, Integer> {
     boolean existsByUserIdAndCardId(Integer userId, Integer cardId);
     List<UserCard> findAllByUserId(Integer userId);
     Optional<UserCard> findByUserIdAndCardId(Integer userId, Integer cardId);
-    List<UserCard> findByUserIdOrderByCreatedAtDescIdDesc(Integer userId, Pageable pageable);
-    List<UserCard> findByUserIdAndIdLessThanOrderByCreatedAtDescIdDesc(Integer userId, Integer cursorId, Pageable pageable);
+    List<UserCard> findByUserIdOrderByIdDesc(Integer userId, Pageable pageable);
+    List<UserCard> findByUserIdAndIdLessThanOrderByIdDesc(Integer userId, Integer cursorId, Pageable pageable);
 
     @Query(value = """
             SELECT uc.*
             FROM user_card uc
-            STRAIGHT_JOIN card c ON c.id = uc.card_id
+            JOIN card c ON c.id = uc.card_id
             WHERE uc.user_id = :userId
-              AND MATCH(c.name, c.company, c.email, c.position, c.phone_number, c.department)
-                  AGAINST(:keyword IN BOOLEAN MODE)
-            ORDER BY uc.created_at DESC, uc.id DESC
+              AND (
+                  c.name LIKE CONCAT('%', :keyword, '%')
+               OR c.company LIKE CONCAT('%', :keyword, '%')
+               OR c.email LIKE CONCAT('%', :keyword, '%')
+               OR c.position LIKE CONCAT('%', :keyword, '%')
+               OR c.phone_number LIKE CONCAT('%', :keyword, '%')
+               OR c.department LIKE CONCAT('%', :keyword, '%')
+              )
+            ORDER BY uc.id DESC
             """, nativeQuery = true)
     List<UserCard> searchCollectedCards(
             @Param("userId") Integer userId,
@@ -31,13 +37,20 @@ public interface UserCardRepository extends JpaRepository<UserCard, Integer> {
     );
 
     @Query(value = """
-            select uc.* from user_card uc
-            join card c on uc.card_id = c.id
-            where uc.user_id = :userId
-              and uc.id < :cursorId
-              and match(c.name, c.company, c.email, c.position, c.phone_number, c.department)
-                  against (:keyword in boolean mode)
-            order by uc.created_at desc, uc.id desc
+            SELECT uc.*
+            FROM user_card uc
+            JOIN card c ON c.id = uc.card_id
+            WHERE uc.user_id = :userId
+              AND uc.id < :cursorId
+              AND (
+                  c.name LIKE CONCAT('%', :keyword, '%')
+               OR c.company LIKE CONCAT('%', :keyword, '%')
+               OR c.email LIKE CONCAT('%', :keyword, '%')
+               OR c.position LIKE CONCAT('%', :keyword, '%')
+               OR c.phone_number LIKE CONCAT('%', :keyword, '%')
+               OR c.department LIKE CONCAT('%', :keyword, '%')
+              )
+            ORDER BY uc.id DESC
             """, nativeQuery = true)
     List<UserCard> searchCollectedCardsWithCursor(
             @Param("userId") Integer userId,
