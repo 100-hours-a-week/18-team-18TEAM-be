@@ -16,8 +16,8 @@ public interface UserCardRepository extends JpaRepository<UserCard, Integer> {
     List<UserCard> findByUserIdAndIdLessThanOrderByIdDesc(Integer userId, Integer cursorId, Pageable pageable);
 
     @Query(value = """
-            SELECT uc.*
-            FROM user_card uc  USE INDEX (idx_user_card_user_id_id)
+            SELECT uc.id
+            FROM user_card uc USE INDEX (idx_user_card_user_id_id)
             JOIN card c ON c.id = uc.card_id
             WHERE uc.user_id = :userId
               AND (
@@ -29,16 +29,16 @@ public interface UserCardRepository extends JpaRepository<UserCard, Integer> {
                OR c.department LIKE CONCAT('%', :keyword, '%')
               )
             ORDER BY uc.id DESC
-""", nativeQuery = true)
-    List<UserCard> searchCollectedCards(
+            """, nativeQuery = true)
+    List<Integer> searchCollectedCardIds(
             @Param("userId") Integer userId,
             @Param("keyword") String keyword,
             Pageable pageable
     );
 
     @Query(value = """
-            SELECT uc.*
-            FROM user_card uc  USE INDEX (idx_user_card_user_id_id)
+            SELECT uc.id
+            FROM user_card uc USE INDEX (idx_user_card_user_id_id)
             JOIN card c ON c.id = uc.card_id
             WHERE uc.user_id = :userId
               AND uc.id < :cursorId
@@ -51,13 +51,22 @@ public interface UserCardRepository extends JpaRepository<UserCard, Integer> {
                OR c.department LIKE CONCAT('%', :keyword, '%')
               )
             ORDER BY uc.id DESC
-""", nativeQuery = true)
-    List<UserCard> searchCollectedCardsWithCursor(
+            """, nativeQuery = true)
+    List<Integer> searchCollectedCardIdsWithCursor(
             @Param("userId") Integer userId,
             @Param("cursorId") Integer cursorId,
             @Param("keyword") String keyword,
             Pageable pageable
     );
+
+    @Query("""
+            SELECT uc FROM UserCard uc
+            JOIN FETCH uc.card c
+            LEFT JOIN FETCH c.user
+            WHERE uc.id IN :ids
+            ORDER BY uc.id DESC
+            """)
+    List<UserCard> findAllByIdInWithFetch(@Param("ids") List<Integer> ids);
 
     void deleteAllByUserId(Integer userId);
 
