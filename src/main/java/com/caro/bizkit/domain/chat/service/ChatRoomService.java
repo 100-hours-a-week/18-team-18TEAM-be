@@ -1,5 +1,8 @@
 package com.caro.bizkit.domain.chat.service;
 
+import com.caro.bizkit.common.S3.service.S3Service;
+import com.caro.bizkit.common.exception.CustomException;
+import com.caro.bizkit.domain.chat.dto.ChatPartnerProfileResponse;
 import com.caro.bizkit.domain.chat.dto.ChatRoomCreateRequest;
 import com.caro.bizkit.domain.chat.dto.ChatRoomListResult;
 import com.caro.bizkit.domain.chat.dto.ChatRoomResponse;
@@ -25,6 +28,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 @Slf4j
@@ -38,6 +42,7 @@ public class ChatRoomService {
     private final CardRepository cardRepository;
     private final UserRepository userRepository;
     private final StringRedisTemplate redisTemplate;
+    private final S3Service s3Service;
 
     private static final String ROOM_LOCK_PREFIX = "chat:room:lock:";
     private static final Duration LOCK_TTL = Duration.ofSeconds(5);
@@ -178,6 +183,28 @@ public class ChatRoomService {
         participant.leave();
     }
 
+    @Transactional(readOnly = true)
+    public ChatPartnerProfileResponse getPartnerProfile(UserPrincipal principal, Integer targetUserId) {
+        Integer myId = principal.id();
+
+        if (myId.equals(targetUserId)) {
+            throw new CustomException(HttpStatus.BAD_REQUEST, "자기 자신의 프로필은 조회할 수 없습니다");
+        }
+
+        User targetUser = userRepository.findByIdAndDeletedAtIsNull(targetUserId)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다"));
+
+        if (!chatParticipantRepository.existsSharedRoom(myId, targetUserId)) {
+            throw new CustomException(HttpStatus.FORBIDDEN, "채팅 상대의 프로필을 조회할 권한이 없습니다");
+        }
+
+        String profileImageUrl = StringUtils.hasText(targetUser.getProfileImageKey())
+                ? s3Service.getPublicUrl(targetUser.getProfileImageKey())
+                : null;
+
+        return ChatPartnerProfileResponse.from(targetUser, profileImageUrl);
+    }
+
     private List<ChatParticipant> findMyParticipants(Integer userId, Integer cursorId, int limit) {
         if (cursorId == null) {
             return chatParticipantRepository.findMyRooms(userId, PageRequest.of(0, limit));
@@ -186,7 +213,7 @@ public class ChatRoomService {
     }
 
     private String getLatestCardName(Integer userId) {
-        return cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByStartDateDesc(userId)
+        return cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByIsProgressDescStartDateDesc(userId)
                 .map(Card::getName)
                 .orElse(null);
     }

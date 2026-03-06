@@ -9,8 +9,8 @@ public interface CardRepository extends JpaRepository<Card, Integer> {
     List<Card> findAllByUserId(Integer userId);
     Optional<Card> findByUuid(String uuid);
     Optional<Card> findTopByUserIdOrderByCreatedAtDesc(Integer userId);
-    List<Card> findAllByUserIdAndDeletedAtIsNullOrderByStartDateDesc(Integer userId);
-    Optional<Card> findTopByUserIdAndDeletedAtIsNullOrderByStartDateDesc(Integer userId);
+    List<Card> findAllByUserIdAndDeletedAtIsNullOrderByIsProgressDescStartDateDesc(Integer userId);
+    Optional<Card> findTopByUserIdAndDeletedAtIsNullOrderByIsProgressDescStartDateDesc(Integer userId);
 
     // OCR 등록 — position 있는 경우
     Optional<Card> findFirstByDeletedAtIsNullAndNameAndEmailAndCompanyAndPositionOrderByCreatedAtDesc(

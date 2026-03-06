@@ -1,107 +1,145 @@
 package com.caro.bizkit.domain.ai.service;
 
-import com.caro.bizkit.common.exception.CustomException;
 import com.caro.bizkit.domain.ai.client.AiAnalysisClient;
+import com.caro.bizkit.domain.ai.config.AiClientProperties;
 import com.caro.bizkit.domain.ai.dto.AiJobAnalyzeRequest;
+import com.caro.bizkit.domain.ai.dto.AiJobSubmitResponse;
 import com.caro.bizkit.domain.ai.dto.AiJobAnalyzeResponse;
+import com.caro.bizkit.domain.ai.dto.AiTaskStatusResponse;
 import com.caro.bizkit.domain.ai.entity.AiAnalysisTask;
 import com.caro.bizkit.domain.ai.repository.AiAnalysisTaskRepository;
 import com.caro.bizkit.domain.card.entity.Card;
 import com.caro.bizkit.domain.card.repository.CardRepository;
-import com.caro.bizkit.domain.user.entity.User;
-import com.caro.bizkit.domain.user.repository.UserRepository;
 import com.caro.bizkit.domain.userdetail.activity.entity.Activity;
 import com.caro.bizkit.domain.userdetail.activity.repository.ActivityRepository;
 import com.caro.bizkit.domain.userdetail.project.entity.Project;
 import com.caro.bizkit.domain.userdetail.project.repository.ProjectRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
+import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class AiAnalysisService {
 
-    private final ConcurrentHashMap<Integer, LocalDateTime> pendingCards = new ConcurrentHashMap<>();
+    private static final long DEBOUNCE_SECONDS = 10;
+
+    private final ConcurrentHashMap<Integer, ScheduledFuture<?>> pendingTasks = new ConcurrentHashMap<>();
+    private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(4);
 
     private final AiAnalysisClient aiClient;
-    private final UserRepository userRepository;
     private final CardRepository cardRepository;
     private final ProjectRepository projectRepository;
     private final ActivityRepository activityRepository;
     private final AiAnalysisTaskRepository taskRepository;
     private final TransactionTemplate transactionTemplate;
+    private final AiClientProperties properties;
 
     public void addToBatch(Integer cardId) {
-        pendingCards.put(cardId, LocalDateTime.now());
-        log.info("Adding card to batch: {}", cardId);
+        pendingTasks.compute(cardId, (id, existing) -> {
+            if (existing != null && !existing.isDone()) {
+                existing.cancel(false);
+                log.info("Card {} 디바운스 리셋 (10초 재시작)", id);
+            }
+            return scheduler.schedule(() -> {
+                pendingTasks.remove(id);
+                processCard(id);
+            }, DEBOUNCE_SECONDS, TimeUnit.SECONDS);
+        });
+        log.info("Card {} AI 분석 예약 ({}초 후)", cardId, DEBOUNCE_SECONDS);
     }
 
-    @Scheduled(fixedDelay = 300000)
-    public void processBatch() {
-        Set<Integer> cardIds = new HashSet<>(pendingCards.keySet());
-        pendingCards.clear();
+    private void processCard(Integer cardId) {
+        // ① Tx: 데이터 조회 + task 생성
+        Integer[] taskDbId = new Integer[1];
+        AiJobAnalyzeRequest[] requestRef = new AiJobAnalyzeRequest[1];
 
-        if (cardIds.isEmpty()) {
+        transactionTemplate.executeWithoutResult(status -> {
+            Card card = cardRepository.findById(cardId).orElse(null);
+            if (card == null || card.getUser() == null) {
+                log.warn("Card {} 조회 실패 또는 익명 명함, AI 분석 건너뜀", cardId);
+                return;
+            }
+            Integer userId = card.getUser().getId();
+            List<Project> projects = projectRepository.findAllByUserId(userId);
+            List<Activity> activities = activityRepository.findAllByUserId(userId);
+
+            AiAnalysisTask task = AiAnalysisTask.create(card.getUser());
+            taskRepository.save(task);
+            taskDbId[0] = task.getId();
+            requestRef[0] = buildRequest(card, projects, activities);
+        });
+
+        if (taskDbId[0] == null) return;
+
+        // ② No Tx: POST /ai/job/analyze
+        AiJobSubmitResponse submitResponse;
+        try {
+            submitResponse = aiClient.submitAnalysis(requestRef[0]);
+        } catch (Exception e) {
+            log.error("Card {} AI 분석 요청 실패: {}", cardId, e.getMessage());
+            transactionTemplate.executeWithoutResult(status ->
+                    taskRepository.findById(taskDbId[0]).ifPresent(AiAnalysisTask::fail));
             return;
         }
 
-        log.info("Processing batch: {} cards", cardIds.size());
+        String aiTaskId = submitResponse.taskId();
+        log.info("Card {} AI 분석 요청 완료, aiTaskId={}", cardId, aiTaskId);
 
-        for (Integer cardId : cardIds) {
-            processCardWithTransaction(cardId);
-        }
+        // ③ Tx: aiTaskId 저장
+        transactionTemplate.executeWithoutResult(status ->
+                taskRepository.findById(taskDbId[0]).ifPresent(task -> task.assignAiTaskId(aiTaskId)));
+
+        // ④ polling 시작
+        long deadline = System.currentTimeMillis() + properties.getTimeoutSeconds() * 1000L;
+        scheduler.schedule(() -> poll(cardId, taskDbId[0], aiTaskId, deadline),
+                properties.getPollIntervalSeconds(), TimeUnit.SECONDS);
     }
 
-    private void processCardWithTransaction(Integer cardId) {
-        transactionTemplate.executeWithoutResult(status -> {
-            AiAnalysisTask task = null;
-            try {
-                Card card = cardRepository.findById(cardId)
-                        .orElseThrow();
-                User user = card.getUser();
-                Integer userId = user.getId();
-                List<Project> projects = projectRepository.findAllByUserId(userId);
-                List<Activity> activities = activityRepository.findAllByUserId(userId);
+    private void poll(Integer cardId, Integer taskDbId, String aiTaskId, long deadline) {
+        if (System.currentTimeMillis() > deadline) {
+            log.warn("Card {} AI 분석 시간 초과 (aiTaskId={})", cardId, aiTaskId);
+            transactionTemplate.executeWithoutResult(status ->
+                    taskRepository.findById(taskDbId).ifPresent(AiAnalysisTask::fail));
+            return;
+        }
 
-                task = AiAnalysisTask.create(user);
-                taskRepository.save(task);
+        try {
+            AiTaskStatusResponse statusResponse = aiClient.getTaskStatus(aiTaskId);
 
-                AiJobAnalyzeRequest request = buildRequest(card, projects, activities);
-                AiJobAnalyzeResponse response = aiClient.analyzeSync(request);
-
-                if (response != null && response.data() != null) {
-                    card.updateDescription(response.data().introduction());
-                    task.complete();
-                    log.info("AI analysis completed for card: {}", cardId);
-                } else {
-                    task.fail();
-                    log.warn("AI analysis returned empty response for card: {}", cardId);
-                }
-            } catch (CustomException e) {
-                if (task != null) {
-                    task.fail();
-                }
-                log.error("AI server error for card {}: status={}, message={}",
-                        cardId, e.getStatus(), e.getMessage());
-            } catch (Exception e) {
-                if (task != null) {
-                    task.fail();
-                }
-                log.error("AI analysis failed for card: {}", cardId, e);
+            if ("done".equals(statusResponse.progress())) {
+                Optional<AiJobAnalyzeResponse> result = aiClient.getTaskResult(aiTaskId);
+                result.ifPresent(res -> transactionTemplate.executeWithoutResult(status -> {
+                    cardRepository.findById(cardId).ifPresent(card ->
+                            card.updateDescription(res.data().introduction()));
+                    taskRepository.findById(taskDbId).ifPresent(AiAnalysisTask::complete);
+                }));
+                log.info("Card {} AI 분석 완료", cardId);
+            } else if ("failed".equals(statusResponse.status())) {
+                log.warn("Card {} AI 분석 실패 (aiTaskId={})", cardId, aiTaskId);
+                transactionTemplate.executeWithoutResult(status ->
+                        taskRepository.findById(taskDbId).ifPresent(AiAnalysisTask::fail));
+            } else {
+                scheduler.schedule(() -> poll(cardId, taskDbId, aiTaskId, deadline),
+                        properties.getPollIntervalSeconds(), TimeUnit.SECONDS);
             }
-        });
+        } catch (Exception e) {
+            log.error("Card {} polling 오류: {}", cardId, e.getMessage());
+            transactionTemplate.executeWithoutResult(status ->
+                    taskRepository.findById(taskDbId).ifPresent(AiAnalysisTask::fail));
+        }
     }
 
     private AiJobAnalyzeRequest buildRequest(Card card, List<Project> projects, List<Activity> activities) {

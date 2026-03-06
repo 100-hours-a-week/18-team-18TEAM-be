@@ -10,9 +10,7 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.servlet.http.Cookie;
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Collections;
 
 import org.slf4j.Logger;
@@ -62,9 +60,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     ) throws ServletException, IOException
     {
         String token = extractTokenFromHeader(request);
-        if (token == null) {
-            token = extractTokenFromCookie(request);
-        }
         if (token == null) {
             filterChain.doFilter(request, response);
             return;
@@ -116,17 +111,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             return bearer.substring(7);
         }
         return null;
-    }
-
-    private String extractTokenFromCookie(HttpServletRequest request) {
-        if (request.getCookies() == null) {
-            return null;
-        }
-        return Arrays.stream(request.getCookies())
-                .filter(cookie -> "accessToken".equals(cookie.getName()))
-                .map(Cookie::getValue)
-                .findFirst()
-                .orElse(null);
     }
 
     private Integer parseUserId(String subject) {

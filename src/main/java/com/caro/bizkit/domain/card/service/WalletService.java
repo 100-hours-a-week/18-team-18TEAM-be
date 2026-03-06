@@ -74,7 +74,7 @@ public class WalletService {
     @Transactional
     public CardResponse createAnonymousCard(UserPrincipal principal, CardOcrRequest request) {
         // ① 본인 명함 여부 확인
-        String baseName = cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByStartDateDesc(principal.id())
+        String baseName = cardRepository.findTopByUserIdAndDeletedAtIsNullOrderByIsProgressDescStartDateDesc(principal.id())
                 .map(Card::getName)
                 .orElse(principal.name());
         if (request.name().equals(baseName) && request.email().equals(principal.email())) {
@@ -132,17 +132,20 @@ public class WalletService {
 
     private List<UserCard> findUserCards(Integer userId, Integer cursorId, String keyword, int limit) {
         if (StringUtils.hasText(keyword)) {
+            String escaped = keyword.replace("\\", "\\\\")
+                                    .replace("%", "\\%")
+                                    .replace("_", "\\_");
             if (cursorId == null) {
                 return userCardRepository.searchCollectedCards(
-                        userId, keyword, PageRequest.of(0, limit));
+                        userId, escaped, PageRequest.of(0, limit));
             }
             return userCardRepository.searchCollectedCardsWithCursor(
-                    userId, cursorId, keyword, PageRequest.of(0, limit));
+                    userId, cursorId, escaped, PageRequest.of(0, limit));
         }
         if (cursorId == null) {
-            return userCardRepository.findByUserIdOrderByCreatedAtDescIdDesc(userId, PageRequest.of(0, limit));
+            return userCardRepository.findByUserIdOrderByIdDesc(userId, PageRequest.of(0, limit));
         }
-        return userCardRepository.findByUserIdAndIdLessThanOrderByCreatedAtDescIdDesc(
+        return userCardRepository.findByUserIdAndIdLessThanOrderByIdDesc(
                 userId,
                 cursorId,
                 PageRequest.of(0, limit)
