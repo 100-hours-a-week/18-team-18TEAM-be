@@ -17,7 +17,7 @@ public interface UserCardRepository extends JpaRepository<UserCard, Integer> {
 
     @Query(value = """
             SELECT uc.*
-            FROM user_card uc
+            FROM user_card uc  USE INDEX (idx_user_card_user_id_id)
             JOIN card c ON c.id = uc.card_id
             WHERE uc.user_id = :userId
               AND (
@@ -29,7 +29,7 @@ public interface UserCardRepository extends JpaRepository<UserCard, Integer> {
                OR c.department LIKE CONCAT('%', :keyword, '%')
               )
             ORDER BY uc.id DESC
-            """, nativeQuery = true)
+""", nativeQuery = true)
     List<UserCard> searchCollectedCards(
             @Param("userId") Integer userId,
             @Param("keyword") String keyword,
@@ -38,7 +38,7 @@ public interface UserCardRepository extends JpaRepository<UserCard, Integer> {
 
     @Query(value = """
             SELECT uc.*
-            FROM user_card uc
+            FROM user_card uc  USE INDEX (idx_user_card_user_id_id)
             JOIN card c ON c.id = uc.card_id
             WHERE uc.user_id = :userId
               AND uc.id < :cursorId
@@ -51,7 +51,7 @@ public interface UserCardRepository extends JpaRepository<UserCard, Integer> {
                OR c.department LIKE CONCAT('%', :keyword, '%')
               )
             ORDER BY uc.id DESC
-            """, nativeQuery = true)
+""", nativeQuery = true)
     List<UserCard> searchCollectedCardsWithCursor(
             @Param("userId") Integer userId,
             @Param("cursorId") Integer cursorId,
