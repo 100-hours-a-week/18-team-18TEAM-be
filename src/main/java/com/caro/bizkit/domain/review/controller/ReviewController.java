@@ -2,6 +2,7 @@ package com.caro.bizkit.domain.review.controller;
 
 import com.caro.bizkit.common.ApiResponse.ApiResponse;
 import com.caro.bizkit.domain.review.dto.request.ReviewCreateRequest;
+import com.caro.bizkit.domain.review.dto.response.ReviewCreateResponse;
 import com.caro.bizkit.domain.review.dto.response.ReviewDetailResponse;
 import com.caro.bizkit.domain.review.dto.response.ReviewSummaryResponse;
 import com.caro.bizkit.domain.review.dto.response.TagResponse;
@@ -61,6 +62,15 @@ public class ReviewController {
         return ResponseEntity.ok(ApiResponse.success("내가 쓴 리뷰 조회 성공", reviewService.getMyReview(user, revieweeId)));
     }
 
+
+    @PostMapping
+    public ResponseEntity<ApiResponse<ReviewCreateResponse>> createReview(
+            @AuthenticationPrincipal UserPrincipal user,
+            @Valid @RequestBody ReviewCreateRequest request
+    ) {
+        return ResponseEntity.ok(ApiResponse.success("리뷰 작성 성공", reviewService.createReview(user, request)));
+    }
+
     @PatchMapping
     public ResponseEntity<ApiResponse<ReviewDetailResponse>> updateReview(
             @AuthenticationPrincipal UserPrincipal user,
@@ -78,11 +88,4 @@ public class ReviewController {
         return ResponseEntity.ok(ApiResponse.success("리뷰 삭제 성공", null));
     }
 
-    @PostMapping
-    public ResponseEntity<ApiResponse<Map<String, Integer>>> createReview(
-            @AuthenticationPrincipal UserPrincipal user,
-            @Valid @RequestBody ReviewCreateRequest request
-    ) {
-        return ResponseEntity.status(201).body(ApiResponse.success("리뷰 작성 성공", reviewService.createReview(user, request)));
-    }
 }
