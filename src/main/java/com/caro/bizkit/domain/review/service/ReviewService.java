@@ -58,6 +58,42 @@ public class ReviewService {
         return Map.of("review_id", review.getId());
     }
 
+    @Transactional
+    public void updateReview(UserPrincipal principal, Map<String, Object> body) {
+        Integer revieweeId = (Integer) body.get("reviewee_id");
+        Review review = reviewRepository.findByReviewer_IdAndReviewee_Id(principal.id(), revieweeId)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "리뷰를 찾을 수 없습니다."));
+        if (!review.getReviewer().getId().equals(principal.id())) {
+            throw new CustomException(HttpStatus.FORBIDDEN, "본인의 리뷰만 수정할 수 있습니다.");
+        }
+        applyReviewUpdates(review, body);
+    }
+
+    private void applyReviewUpdates(Review review, Map<String, Object> body) {
+        if (body.containsKey("score")) review.update((Integer) body.get("score"), null);
+        if (body.containsKey("comment")) review.update(null, (String) body.get("comment"));
+        if (body.containsKey("tag_id_list")) {
+            List<?> rawList = (List<?>) body.get("tag_id_list");
+            if (rawList.size() < 1 || rawList.size() > 3) {
+                throw new CustomException(HttpStatus.BAD_REQUEST, "태그는 1~3개 선택해야 합니다.");
+            }
+            reviewTagRepository.deleteAllByReviewId(review.getId());
+            rawList.stream()
+                    .map(id -> (Integer) id)
+                    .forEach(tagId -> reviewTagRepository.save(ReviewTag.create(review, tagRepository.getReferenceById(tagId))));
+        }
+    }
+
+    @Transactional
+    public void deleteReview(UserPrincipal principal, Integer revieweeId) {
+        Review review = reviewRepository.findByReviewer_IdAndReviewee_Id(principal.id(), revieweeId)
+                .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "리뷰를 찾을 수 없습니다."));
+        if (!review.getReviewer().getId().equals(principal.id())) {
+            throw new CustomException(HttpStatus.FORBIDDEN, "본인의 리뷰만 삭제할 수 있습니다.");
+        }
+        reviewRepository.delete(review);
+    }
+
     @Transactional(readOnly = true)
     public ReviewDetailResponse getMyReview(UserPrincipal principal, Integer revieweeId) {
         return reviewRepository.findByReviewer_IdAndReviewee_Id(principal.id(), revieweeId)

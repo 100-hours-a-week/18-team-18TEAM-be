@@ -11,7 +11,9 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -40,6 +42,24 @@ public class ReviewController {
             @RequestParam Integer revieweeId
     ) {
         return ResponseEntity.ok(ApiResponse.success("내가 쓴 리뷰 조회 성공", reviewService.getMyReview(user, revieweeId)));
+    }
+
+    @PatchMapping
+    public ResponseEntity<ApiResponse<Void>> updateReview(
+            @AuthenticationPrincipal UserPrincipal user,
+            @RequestBody Map<String, Object> body
+    ) {
+        reviewService.updateReview(user, body);
+        return ResponseEntity.ok(ApiResponse.success("리뷰 수정 성공", null));
+    }
+
+    @DeleteMapping
+    public ResponseEntity<ApiResponse<Void>> deleteReview(
+            @AuthenticationPrincipal UserPrincipal user,
+            @RequestParam Integer revieweeId
+    ) {
+        reviewService.deleteReview(user, revieweeId);
+        return ResponseEntity.ok(ApiResponse.success("리뷰 삭제 성공", null));
     }
 
     @PostMapping
