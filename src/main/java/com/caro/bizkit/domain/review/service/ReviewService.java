@@ -64,7 +64,7 @@ public class ReviewService {
     }
 
     @Transactional
-    public void updateReview(UserPrincipal principal, Map<String, Object> body) {
+    public ReviewDetailResponse updateReview(UserPrincipal principal, Map<String, Object> body) {
         Integer revieweeId = (Integer) body.get("reviewee_id");
         Review review = reviewRepository.findByReviewer_IdAndReviewee_Id(principal.id(), revieweeId)
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "리뷰를 찾을 수 없습니다."));
@@ -72,6 +72,7 @@ public class ReviewService {
             throw new CustomException(HttpStatus.FORBIDDEN, "본인의 리뷰만 수정할 수 있습니다.");
         }
         applyReviewUpdates(review, body);
+        return ReviewDetailResponse.of(review, reviewTagRepository.findAllByReview_Id(review.getId()));
     }
 
     private void applyReviewUpdates(Review review, Map<String, Object> body) {

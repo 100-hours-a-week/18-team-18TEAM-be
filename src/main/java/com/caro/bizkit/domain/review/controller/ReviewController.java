@@ -62,12 +62,11 @@ public class ReviewController {
     }
 
     @PatchMapping
-    public ResponseEntity<ApiResponse<Void>> updateReview(
+    public ResponseEntity<ApiResponse<ReviewDetailResponse>> updateReview(
             @AuthenticationPrincipal UserPrincipal user,
             @RequestBody Map<String, Object> body
     ) {
-        reviewService.updateReview(user, body);
-        return ResponseEntity.ok(ApiResponse.success("리뷰 수정 성공", null));
+        return ResponseEntity.ok(ApiResponse.success("리뷰 수정 성공", reviewService.updateReview(user, body)));
     }
 
     @DeleteMapping
