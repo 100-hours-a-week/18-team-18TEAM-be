@@ -3,6 +3,7 @@ package com.caro.bizkit.domain.review.controller;
 import com.caro.bizkit.common.ApiResponse.ApiResponse;
 import com.caro.bizkit.domain.review.dto.request.ReviewCreateRequest;
 import com.caro.bizkit.domain.review.dto.response.ReviewDetailResponse;
+import com.caro.bizkit.domain.review.dto.response.ReviewSummaryResponse;
 import com.caro.bizkit.domain.review.dto.response.TagResponse;
 import com.caro.bizkit.domain.review.service.ReviewService;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
@@ -30,6 +31,13 @@ import java.util.Map;
 public class ReviewController {
 
     private final ReviewService reviewService;
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<ReviewSummaryResponse>> getMyReviewSummary(
+            @AuthenticationPrincipal UserPrincipal user
+    ) {
+        return ResponseEntity.ok(ApiResponse.success("내 리뷰 조회 성공", reviewService.getMyReviewSummary(user)));
+    }
 
     @GetMapping("/tags")
     public ResponseEntity<ApiResponse<List<TagResponse>>> getTags() {

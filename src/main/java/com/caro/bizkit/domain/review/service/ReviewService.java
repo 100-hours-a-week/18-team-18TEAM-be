@@ -3,6 +3,8 @@ package com.caro.bizkit.domain.review.service;
 import com.caro.bizkit.common.exception.CustomException;
 import com.caro.bizkit.domain.review.dto.request.ReviewCreateRequest;
 import com.caro.bizkit.domain.review.dto.response.ReviewDetailResponse;
+import com.caro.bizkit.domain.review.dto.response.ReviewSummaryResponse;
+import com.caro.bizkit.domain.review.dto.response.TagCountResponse;
 import com.caro.bizkit.domain.review.dto.response.TagResponse;
 import com.caro.bizkit.domain.review.entity.Review;
 import com.caro.bizkit.domain.review.entity.ReviewTag;
@@ -20,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Map;
+import org.springframework.data.domain.PageRequest;
 
 @Service
 @RequiredArgsConstructor
@@ -99,5 +102,37 @@ public class ReviewService {
         return reviewRepository.findByReviewer_IdAndReviewee_Id(principal.id(), revieweeId)
                 .map(review -> ReviewDetailResponse.of(review, reviewTagRepository.findAllByReview_Id(review.getId())))
                 .orElse(null);
+    }
+
+    @Transactional(readOnly = true)
+    public ReviewSummaryResponse getMyReviewSummary(UserPrincipal principal) {
+        return buildSummary(principal.id());
+    }
+
+    private ReviewSummaryResponse buildSummary(Integer revieweeId) {
+        Object[] agg = reviewRepository.findAggregateByRevieweeId(revieweeId);
+        int reviewCount = ((Number) agg[0]).intValue();
+        int starScoreSum = ((Number) agg[1]).intValue();
+
+        double averageScore = reviewCount == 0 ? 0.0 : Math.round((double) starScoreSum / reviewCount * 10.0) / 10.0;
+        double calculatedScore = Math.round(calculateScore(reviewCount, starScoreSum) * 10.0) / 10.0;
+
+        List<TagCountResponse> topTags = reviewTagRepository
+                .findTopTagsByRevieweeId(revieweeId, PageRequest.of(0, 3))
+                .stream()
+                .map(row -> new TagCountResponse((Integer) row[0], (String) row[1], ((Number) row[2]).longValue()))
+                .toList();
+
+        return new ReviewSummaryResponse(reviewCount, averageScore, calculatedScore, topTags);
+    }
+
+    private double calculateScore(int reviewCount, int starScoreSum) {
+        if (reviewCount == 0) return 30.0;
+        double n = reviewCount;
+        double sum = starScoreSum;
+        double bayesAvg = (60 + sum) / (20 + n);
+        double baseScore = 30 + 15 * (bayesAvg - 3);
+        double countBonus = 4 * Math.log(1 + n) + 0.03 * n;
+        return Math.clamp(baseScore + countBonus, 0.0, 100.0);
     }
 }

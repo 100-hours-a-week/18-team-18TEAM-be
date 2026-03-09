@@ -17,4 +17,13 @@ public interface ReviewTagRepository extends JpaRepository<ReviewTag, Integer> {
     @Modifying
     @Query("DELETE FROM ReviewTag rt WHERE rt.review.id = :reviewId")
     void deleteAllByReviewId(@Param("reviewId") Integer reviewId);
+
+    @Query("""
+            SELECT rt.tag.id, rt.tag.keyword, COUNT(rt)
+            FROM ReviewTag rt
+            WHERE rt.review.reviewee.id = :revieweeId
+            GROUP BY rt.tag.id, rt.tag.keyword
+            ORDER BY COUNT(rt) DESC
+            """)
+    List<Object[]> findTopTagsByRevieweeId(@Param("revieweeId") Integer revieweeId, org.springframework.data.domain.Pageable pageable);
 }
