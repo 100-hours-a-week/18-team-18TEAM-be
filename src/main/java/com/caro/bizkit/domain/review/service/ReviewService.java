@@ -11,6 +11,7 @@ import com.caro.bizkit.domain.review.entity.ReviewTag;
 import com.caro.bizkit.domain.review.entity.Tag;
 import com.caro.bizkit.domain.review.repository.ReviewRepository;
 import com.caro.bizkit.domain.review.repository.ReviewTagRepository;
+import com.caro.bizkit.domain.card.repository.UserCardRepository;
 import com.caro.bizkit.domain.review.repository.TagRepository;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.user.entity.User;
@@ -32,6 +33,7 @@ public class ReviewService {
     private final ReviewRepository reviewRepository;
     private final ReviewTagRepository reviewTagRepository;
     private final UserRepository userRepository;
+    private final UserCardRepository userCardRepository;
 
     @Transactional(readOnly = true)
     public List<TagResponse> getTags() {
@@ -107,6 +109,14 @@ public class ReviewService {
     @Transactional(readOnly = true)
     public ReviewSummaryResponse getMyReviewSummary(UserPrincipal principal) {
         return buildSummary(principal.id());
+    }
+
+    @Transactional(readOnly = true)
+    public ReviewSummaryResponse getUserReviewSummary(UserPrincipal principal, Integer userId) {
+        if (!userCardRepository.existsCollectedCardByOwner(principal.id(), userId)) {
+            throw new CustomException(HttpStatus.FORBIDDEN, "해당 사용자의 명함을 보유하고 있지 않습니다.");
+        }
+        return buildSummary(userId);
     }
 
     private ReviewSummaryResponse buildSummary(Integer revieweeId) {
