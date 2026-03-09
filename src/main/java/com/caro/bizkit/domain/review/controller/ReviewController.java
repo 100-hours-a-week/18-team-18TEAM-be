@@ -2,7 +2,6 @@ package com.caro.bizkit.domain.review.controller;
 
 import com.caro.bizkit.common.ApiResponse.ApiResponse;
 import com.caro.bizkit.domain.review.dto.request.ReviewCreateRequest;
-import com.caro.bizkit.domain.review.dto.response.ReviewCreateResponse;
 import com.caro.bizkit.domain.review.dto.response.ReviewDetailResponse;
 import com.caro.bizkit.domain.review.dto.response.ReviewSummaryResponse;
 import com.caro.bizkit.domain.review.dto.response.TagResponse;
@@ -64,7 +63,7 @@ public class ReviewController {
 
 
     @PostMapping
-    public ResponseEntity<ApiResponse<ReviewCreateResponse>> createReview(
+    public ResponseEntity<ApiResponse<ReviewDetailResponse>> createReview(
             @AuthenticationPrincipal UserPrincipal user,
             @Valid @RequestBody ReviewCreateRequest request
     ) {

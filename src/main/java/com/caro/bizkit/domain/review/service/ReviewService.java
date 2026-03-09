@@ -2,7 +2,6 @@ package com.caro.bizkit.domain.review.service;
 
 import com.caro.bizkit.common.exception.CustomException;
 import com.caro.bizkit.domain.review.dto.request.ReviewCreateRequest;
-import com.caro.bizkit.domain.review.dto.response.ReviewCreateResponse;
 import com.caro.bizkit.domain.review.dto.response.ReviewDetailResponse;
 import com.caro.bizkit.domain.review.dto.response.ReviewSummaryResponse;
 import com.caro.bizkit.domain.review.dto.response.TagCountResponse;
@@ -44,7 +43,7 @@ public class ReviewService {
     }
 
     @Transactional
-    public ReviewCreateResponse createReview(UserPrincipal principal, ReviewCreateRequest request) {
+    public ReviewDetailResponse createReview(UserPrincipal principal, ReviewCreateRequest request) {
         if (principal.id().equals(request.revieweeId())) {
             throw new CustomException(HttpStatus.BAD_REQUEST, "본인에게 리뷰를 작성할 수 없습니다.");
         }
@@ -61,7 +60,8 @@ public class ReviewService {
             reviewTagRepository.save(ReviewTag.create(review, tag));
         });
 
-        return new ReviewCreateResponse(review.getId());
+        List<ReviewTag> reviewTags = reviewTagRepository.findAllByReview_Id(review.getId());
+        return ReviewDetailResponse.of(review, reviewTags);
     }
 
     @Transactional
