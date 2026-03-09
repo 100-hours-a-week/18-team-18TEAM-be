@@ -2,6 +2,7 @@ package com.caro.bizkit.domain.review.controller;
 
 import com.caro.bizkit.common.ApiResponse.ApiResponse;
 import com.caro.bizkit.domain.review.dto.request.ReviewCreateRequest;
+import com.caro.bizkit.domain.review.dto.response.ReviewDetailResponse;
 import com.caro.bizkit.domain.review.dto.response.TagResponse;
 import com.caro.bizkit.domain.review.service.ReviewService;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
@@ -14,6 +15,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
@@ -30,6 +32,14 @@ public class ReviewController {
     @GetMapping("/tags")
     public ResponseEntity<ApiResponse<List<TagResponse>>> getTags() {
         return ResponseEntity.ok(ApiResponse.success("태그 조회 성공", reviewService.getTags()));
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<ReviewDetailResponse>> getMyReview(
+            @AuthenticationPrincipal UserPrincipal user,
+            @RequestParam Integer revieweeId
+    ) {
+        return ResponseEntity.ok(ApiResponse.success("내가 쓴 리뷰 조회 성공", reviewService.getMyReview(user, revieweeId)));
     }
 
     @PostMapping

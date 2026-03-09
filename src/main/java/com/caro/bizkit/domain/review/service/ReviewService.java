@@ -2,6 +2,7 @@ package com.caro.bizkit.domain.review.service;
 
 import com.caro.bizkit.common.exception.CustomException;
 import com.caro.bizkit.domain.review.dto.request.ReviewCreateRequest;
+import com.caro.bizkit.domain.review.dto.response.ReviewDetailResponse;
 import com.caro.bizkit.domain.review.dto.response.TagResponse;
 import com.caro.bizkit.domain.review.entity.Review;
 import com.caro.bizkit.domain.review.entity.ReviewTag;
@@ -55,5 +56,12 @@ public class ReviewService {
         });
 
         return Map.of("review_id", review.getId());
+    }
+
+    @Transactional(readOnly = true)
+    public ReviewDetailResponse getMyReview(UserPrincipal principal, Integer revieweeId) {
+        return reviewRepository.findByReviewer_IdAndReviewee_Id(principal.id(), revieweeId)
+                .map(review -> ReviewDetailResponse.of(review, reviewTagRepository.findAllByReview_Id(review.getId())))
+                .orElse(null);
     }
 }
