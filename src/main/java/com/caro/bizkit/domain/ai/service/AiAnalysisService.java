@@ -7,6 +7,7 @@ import com.caro.bizkit.domain.ai.dto.AiJobSubmitResponse;
 import com.caro.bizkit.domain.ai.dto.AiJobAnalyzeResponse;
 import com.caro.bizkit.domain.ai.dto.AiTaskStatusResponse;
 import com.caro.bizkit.domain.ai.entity.AiAnalysisTask;
+import com.caro.bizkit.domain.ai.entity.AiAnalysisTaskType;
 import com.caro.bizkit.domain.ai.repository.AiAnalysisTaskRepository;
 import com.caro.bizkit.domain.card.entity.Card;
 import com.caro.bizkit.domain.card.repository.CardRepository;
@@ -76,7 +77,7 @@ public class AiAnalysisService {
             List<Project> projects = projectRepository.findAllByUserId(userId);
             List<Activity> activities = activityRepository.findAllByUserId(userId);
 
-            AiAnalysisTask task = AiAnalysisTask.create(card.getUser());
+            AiAnalysisTask task = AiAnalysisTask.create(card.getUser(), AiAnalysisTaskType.JOB);
             taskRepository.save(task);
             taskDbId[0] = task.getId();
             requestRef[0] = buildRequest(card, projects, activities);
