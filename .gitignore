@@ -49,3 +49,6 @@ k6/
 src/main/resources/application-dev.yml
 src/main/resources/static/chat-test.html
 docker-compose.yml
+
+## 설계 문서
+docs/
