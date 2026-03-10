@@ -2,6 +2,8 @@ package com.caro.bizkit.domain.ai.client;
 
 import com.caro.bizkit.common.exception.CustomException;
 import com.caro.bizkit.domain.ai.config.AiClientProperties;
+import com.caro.bizkit.domain.ai.dto.AiHexAnalyzeRequest;
+import com.caro.bizkit.domain.ai.dto.AiHexAnalyzeResponse;
 import com.caro.bizkit.domain.ai.dto.AiJobAnalyzeRequest;
 import com.caro.bizkit.domain.ai.dto.AiJobAnalyzeResponse;
 import com.caro.bizkit.domain.ai.dto.AiJobSubmitResponse;
@@ -39,6 +41,39 @@ public class AiAnalysisClient {
                 })
                 .bodyToMono(AiJobSubmitResponse.class)
                 .block(Duration.ofSeconds(properties.getJob().getTimeoutSeconds()));
+    }
+
+    public AiJobSubmitResponse submitHexAnalysis(AiHexAnalyzeRequest request) {
+        log.info("User {} 6각 차트 분석 요청", request.userId());
+        return webClientBuilder.build()
+                .post()
+                .uri(properties.getBaseUrl() + "/ai/hex/analyze")
+                .contentType(MediaType.APPLICATION_JSON)
+                .bodyValue(request)
+                .retrieve()
+                .onStatus(HttpStatusCode::isError, response -> {
+                    log.error("AI 서버 오류: {}", response.statusCode());
+                    return Mono.error(new CustomException(response.statusCode(), "AI 서버 오류: " + response.statusCode()));
+                })
+                .bodyToMono(AiJobSubmitResponse.class)
+                .block(Duration.ofSeconds(properties.getHex().getTimeoutSeconds()));
+    }
+
+    public Optional<AiHexAnalyzeResponse> getHexTaskResult(String taskId) {
+        return webClientBuilder.build()
+                .get()
+                .uri(properties.getBaseUrl() + "/ai/tasks/{taskId}/result", taskId)
+                .exchangeToMono(response -> {
+                    int status = response.statusCode().value();
+                    if (status == 200) {
+                        return response.bodyToMono(AiHexAnalyzeResponse.class).map(Optional::of);
+                    } else if (status == 202) {
+                        return Mono.just(Optional.<AiHexAnalyzeResponse>empty());
+                    } else {
+                        return Mono.error(new CustomException(response.statusCode(), "AI 결과 조회 실패: " + status));
+                    }
+                })
+                .block(Duration.ofSeconds(properties.getHex().getTimeoutSeconds()));
     }
 
     public AiTaskStatusResponse getTaskStatus(String taskId) {
