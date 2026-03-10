@@ -26,4 +26,12 @@ public interface ReviewTagRepository extends JpaRepository<ReviewTag, Integer> {
             ORDER BY COUNT(rt) DESC
             """)
     List<Object[]> findTopTagsByRevieweeId(@Param("revieweeId") Integer revieweeId, org.springframework.data.domain.Pageable pageable);
+
+    @Query("""
+            SELECT rt.tag.keyword, COUNT(rt)
+            FROM ReviewTag rt
+            WHERE rt.review.reviewee.id = :revieweeId
+            GROUP BY rt.tag.keyword
+            """)
+    List<Object[]> findTagCountsByRevieweeId(@Param("revieweeId") Integer revieweeId);
 }

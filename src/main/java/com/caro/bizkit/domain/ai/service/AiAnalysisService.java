@@ -7,6 +7,7 @@ import com.caro.bizkit.domain.ai.dto.AiJobSubmitResponse;
 import com.caro.bizkit.domain.ai.dto.AiJobAnalyzeResponse;
 import com.caro.bizkit.domain.ai.dto.AiTaskStatusResponse;
 import com.caro.bizkit.domain.ai.entity.AiAnalysisTask;
+import com.caro.bizkit.domain.ai.entity.AiAnalysisTaskType;
 import com.caro.bizkit.domain.ai.repository.AiAnalysisTaskRepository;
 import com.caro.bizkit.domain.card.entity.Card;
 import com.caro.bizkit.domain.card.repository.CardRepository;
@@ -76,7 +77,7 @@ public class AiAnalysisService {
             List<Project> projects = projectRepository.findAllByUserId(userId);
             List<Activity> activities = activityRepository.findAllByUserId(userId);
 
-            AiAnalysisTask task = AiAnalysisTask.create(card.getUser());
+            AiAnalysisTask task = AiAnalysisTask.create(card.getUser(), AiAnalysisTaskType.JOB);
             taskRepository.save(task);
             taskDbId[0] = task.getId();
             requestRef[0] = buildRequest(card, projects, activities);
@@ -103,9 +104,9 @@ public class AiAnalysisService {
                 taskRepository.findById(taskDbId[0]).ifPresent(task -> task.assignAiTaskId(aiTaskId)));
 
         // ④ polling 시작
-        long deadline = System.currentTimeMillis() + properties.getTimeoutSeconds() * 1000L;
+        long deadline = System.currentTimeMillis() + properties.getJob().getTimeoutSeconds() * 1000L;
         scheduler.schedule(() -> poll(cardId, taskDbId[0], aiTaskId, deadline),
-                properties.getPollIntervalSeconds(), TimeUnit.SECONDS);
+                properties.getJob().getPollIntervalSeconds(), TimeUnit.SECONDS);
     }
 
     private void poll(Integer cardId, Integer taskDbId, String aiTaskId, long deadline) {
@@ -133,7 +134,7 @@ public class AiAnalysisService {
                         taskRepository.findById(taskDbId).ifPresent(AiAnalysisTask::fail));
             } else {
                 scheduler.schedule(() -> poll(cardId, taskDbId, aiTaskId, deadline),
-                        properties.getPollIntervalSeconds(), TimeUnit.SECONDS);
+                        properties.getJob().getPollIntervalSeconds(), TimeUnit.SECONDS);
             }
         } catch (Exception e) {
             log.error("Card {} polling 오류: {}", cardId, e.getMessage());

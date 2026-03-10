@@ -25,13 +25,18 @@ public class AiAnalysisTask extends BaseTimeEntity {
     @Column(nullable = false)
     private AiAnalysisStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private AiAnalysisTaskType taskType;
+
     @Column(name = "ai_task_id")
     private String aiTaskId;
 
-    public static AiAnalysisTask create(User user) {
+    public static AiAnalysisTask create(User user, AiAnalysisTaskType taskType) {
         AiAnalysisTask task = new AiAnalysisTask();
         task.user = user;
         task.status = AiAnalysisStatus.PENDING;
+        task.taskType = taskType;
         return task;
     }
 
