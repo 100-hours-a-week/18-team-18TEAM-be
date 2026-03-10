@@ -13,4 +13,7 @@ public interface ReviewRepository extends JpaRepository<Review, Integer> {
 
     @Query("SELECT COUNT(r), COALESCE(SUM(r.starScore), 0) FROM Review r WHERE r.reviewee.id = :revieweeId")
     Object[] findAggregateByRevieweeId(@Param("revieweeId") Integer revieweeId);
+
+    @Query("SELECT r.content FROM Review r WHERE r.reviewee.id = :revieweeId AND r.content IS NOT NULL")
+    java.util.List<String> findTextReviewsByRevieweeId(@Param("revieweeId") Integer revieweeId);
 }
