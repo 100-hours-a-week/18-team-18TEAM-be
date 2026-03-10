@@ -8,99 +8,83 @@ import com.caro.bizkit.domain.ai.dto.AiJobAnalyzeRequest;
 import com.caro.bizkit.domain.ai.dto.AiJobAnalyzeResponse;
 import com.caro.bizkit.domain.ai.dto.AiJobSubmitResponse;
 import com.caro.bizkit.domain.ai.dto.AiTaskStatusResponse;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Mono;
+import org.springframework.web.client.RestClient;
 
-import java.time.Duration;
 import java.util.Optional;
 
 @Component
-@RequiredArgsConstructor
 @Slf4j
 public class AiAnalysisClient {
 
-    private final WebClient.Builder webClientBuilder;
-    private final AiClientProperties properties;
+    private final RestClient restClient;
+
+    public AiAnalysisClient(RestClient.Builder restClientBuilder, AiClientProperties properties) {
+        this.restClient = restClientBuilder.baseUrl(properties.getBaseUrl()).build();
+    }
 
     public AiJobSubmitResponse submitAnalysis(AiJobAnalyzeRequest request) {
         log.info("Card {} AI 분석 요청", request.cardId());
-        return webClientBuilder.build()
-                .post()
-                .uri(properties.getBaseUrl() + "/ai/job/analyze")
+        return restClient.post()
+                .uri("/ai/job/analyze")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(request)
-                .retrieve()
-                .onStatus(HttpStatusCode::isError, response -> {
-                    log.error("AI 서버 오류: {}", response.statusCode());
-                    return Mono.error(new CustomException(response.statusCode(), "AI 서버 오류: " + response.statusCode()));
-                })
-                .bodyToMono(AiJobSubmitResponse.class)
-                .block(Duration.ofSeconds(properties.getJob().getTimeoutSeconds()));
+                .body(request)
+                .exchange((req, response) -> {
+                    if (response.getStatusCode().isError()) {
+                        log.error("AI 서버 오류: {}", response.getStatusCode());
+                        throw new CustomException(response.getStatusCode(), "AI 서버 오류: " + response.getStatusCode());
+                    }
+                    return response.bodyTo(AiJobSubmitResponse.class);
+                });
     }
 
     public AiJobSubmitResponse submitHexAnalysis(AiHexAnalyzeRequest request) {
         log.info("User {} 6각 차트 분석 요청", request.userId());
-        return webClientBuilder.build()
-                .post()
-                .uri(properties.getBaseUrl() + "/ai/hex/analyze")
+        return restClient.post()
+                .uri("/ai/hex/analyze")
                 .contentType(MediaType.APPLICATION_JSON)
-                .bodyValue(request)
-                .retrieve()
-                .onStatus(HttpStatusCode::isError, response -> {
-                    log.error("AI 서버 오류: {}", response.statusCode());
-                    return Mono.error(new CustomException(response.statusCode(), "AI 서버 오류: " + response.statusCode()));
-                })
-                .bodyToMono(AiJobSubmitResponse.class)
-                .block(Duration.ofSeconds(properties.getHex().getTimeoutSeconds()));
-    }
-
-    public Optional<AiHexAnalyzeResponse> getHexTaskResult(String taskId) {
-        return webClientBuilder.build()
-                .get()
-                .uri(properties.getBaseUrl() + "/ai/tasks/{taskId}/result", taskId)
-                .exchangeToMono(response -> {
-                    int status = response.statusCode().value();
-                    if (status == 200) {
-                        return response.bodyToMono(AiHexAnalyzeResponse.class).map(Optional::of);
-                    } else if (status == 202) {
-                        return Mono.just(Optional.<AiHexAnalyzeResponse>empty());
-                    } else {
-                        return Mono.error(new CustomException(response.statusCode(), "AI 결과 조회 실패: " + status));
+                .body(request)
+                .exchange((req, response) -> {
+                    if (response.getStatusCode().isError()) {
+                        log.error("AI 서버 오류: {}", response.getStatusCode());
+                        throw new CustomException(response.getStatusCode(), "AI 서버 오류: " + response.getStatusCode());
                     }
-                })
-                .block(Duration.ofSeconds(properties.getHex().getTimeoutSeconds()));
+                    return response.bodyTo(AiJobSubmitResponse.class);
+                });
     }
 
     public AiTaskStatusResponse getTaskStatus(String taskId) {
-        return webClientBuilder.build()
-                .get()
-                .uri(properties.getBaseUrl() + "/ai/tasks/{taskId}", taskId)
-                .retrieve()
-                .onStatus(HttpStatusCode::isError, response ->
-                        Mono.error(new CustomException(response.statusCode(), "AI 상태 조회 오류: " + response.statusCode())))
-                .bodyToMono(AiTaskStatusResponse.class)
-                .block(Duration.ofSeconds(properties.getJob().getTimeoutSeconds()));
+        return restClient.get()
+                .uri("/ai/tasks/{taskId}", taskId)
+                .exchange((req, response) -> {
+                    if (response.getStatusCode().isError()) {
+                        throw new CustomException(response.getStatusCode(), "AI 상태 조회 오류: " + response.getStatusCode());
+                    }
+                    return response.bodyTo(AiTaskStatusResponse.class);
+                });
     }
 
     public Optional<AiJobAnalyzeResponse> getTaskResult(String taskId) {
-        return webClientBuilder.build()
-                .get()
-                .uri(properties.getBaseUrl() + "/ai/tasks/{taskId}/result", taskId)
-                .exchangeToMono(response -> {
-                    int status = response.statusCode().value();
-                    if (status == 200) {
-                        return response.bodyToMono(AiJobAnalyzeResponse.class).map(Optional::of);
-                    } else if (status == 202) {
-                        return Mono.just(Optional.<AiJobAnalyzeResponse>empty());
-                    } else {
-                        return Mono.error(new CustomException(response.statusCode(), "AI 결과 조회 실패: " + status));
-                    }
-                })
-                .block(Duration.ofSeconds(properties.getJob().getTimeoutSeconds()));
+        return restClient.get()
+                .uri("/ai/tasks/{taskId}/result", taskId)
+                .exchange((req, response) -> {
+                    int status = response.getStatusCode().value();
+                    if (status == 200) return Optional.ofNullable(response.bodyTo(AiJobAnalyzeResponse.class));
+                    else if (status == 202) return Optional.<AiJobAnalyzeResponse>empty();
+                    else throw new CustomException(response.getStatusCode(), "AI 결과 조회 실패: " + status);
+                });
+    }
+
+    public Optional<AiHexAnalyzeResponse> getHexTaskResult(String taskId) {
+        return restClient.get()
+                .uri("/ai/tasks/{taskId}/result", taskId)
+                .exchange((req, response) -> {
+                    int status = response.getStatusCode().value();
+                    if (status == 200) return Optional.ofNullable(response.bodyTo(AiHexAnalyzeResponse.class));
+                    else if (status == 202) return Optional.<AiHexAnalyzeResponse>empty();
+                    else throw new CustomException(response.getStatusCode(), "AI 결과 조회 실패: " + status);
+                });
     }
 }
