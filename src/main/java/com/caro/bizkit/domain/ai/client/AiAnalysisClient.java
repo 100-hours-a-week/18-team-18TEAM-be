@@ -38,7 +38,7 @@ public class AiAnalysisClient {
                     return Mono.error(new CustomException(response.statusCode(), "AI 서버 오류: " + response.statusCode()));
                 })
                 .bodyToMono(AiJobSubmitResponse.class)
-                .block(Duration.ofSeconds(properties.getTimeoutSeconds()));
+                .block(Duration.ofSeconds(properties.getJob().getTimeoutSeconds()));
     }
 
     public AiTaskStatusResponse getTaskStatus(String taskId) {
@@ -49,7 +49,7 @@ public class AiAnalysisClient {
                 .onStatus(HttpStatusCode::isError, response ->
                         Mono.error(new CustomException(response.statusCode(), "AI 상태 조회 오류: " + response.statusCode())))
                 .bodyToMono(AiTaskStatusResponse.class)
-                .block(Duration.ofSeconds(properties.getTimeoutSeconds()));
+                .block(Duration.ofSeconds(properties.getJob().getTimeoutSeconds()));
     }
 
     public Optional<AiJobAnalyzeResponse> getTaskResult(String taskId) {
@@ -66,6 +66,6 @@ public class AiAnalysisClient {
                         return Mono.error(new CustomException(response.statusCode(), "AI 결과 조회 실패: " + status));
                     }
                 })
-                .block(Duration.ofSeconds(properties.getTimeoutSeconds()));
+                .block(Duration.ofSeconds(properties.getJob().getTimeoutSeconds()));
     }
 }
