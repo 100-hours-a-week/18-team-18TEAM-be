@@ -1,6 +1,7 @@
 package com.caro.bizkit.domain.review.service;
 
 import com.caro.bizkit.common.exception.CustomException;
+import com.caro.bizkit.domain.ai.event.HexAnalysisTriggerEvent;
 import com.caro.bizkit.domain.review.dto.request.ReviewCreateRequest;
 import com.caro.bizkit.domain.review.dto.response.ReviewDetailResponse;
 import com.caro.bizkit.domain.review.dto.response.ReviewSummaryResponse;
@@ -17,6 +18,7 @@ import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.user.entity.User;
 import com.caro.bizkit.domain.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +36,7 @@ public class ReviewService {
     private final ReviewTagRepository reviewTagRepository;
     private final UserRepository userRepository;
     private final UserCardRepository userCardRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public List<TagResponse> getTags() {
@@ -61,6 +64,12 @@ public class ReviewService {
         });
 
         List<ReviewTag> reviewTags = reviewTagRepository.findAllByReview_Id(review.getId());
+
+        long reviewCount = ((Number) reviewRepository.findAggregateByRevieweeId(request.revieweeId())[0]).longValue();
+        if (reviewCount % 10 == 0) {
+            eventPublisher.publishEvent(new HexAnalysisTriggerEvent(request.revieweeId()));
+        }
+
         return ReviewDetailResponse.of(review, reviewTags);
     }
 
