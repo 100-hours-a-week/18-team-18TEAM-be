@@ -2,6 +2,8 @@ package com.caro.bizkit.domain.ai.client;
 
 import com.caro.bizkit.common.exception.CustomException;
 import com.caro.bizkit.domain.ai.config.AiClientProperties;
+import com.caro.bizkit.domain.ai.dto.AiCardGenerateRequest;
+import com.caro.bizkit.domain.ai.dto.AiCardGenerateResponse;
 import com.caro.bizkit.domain.ai.dto.AiHexAnalyzeRequest;
 import com.caro.bizkit.domain.ai.dto.AiHexAnalyzeResponse;
 import com.caro.bizkit.domain.ai.dto.AiJobAnalyzeRequest;
@@ -73,6 +75,32 @@ public class AiAnalysisClient {
                     int status = response.getStatusCode().value();
                     if (status == 200) return Optional.ofNullable(response.bodyTo(AiJobAnalyzeResponse.class));
                     else if (status == 202) return Optional.<AiJobAnalyzeResponse>empty();
+                    else throw new CustomException(response.getStatusCode(), "AI 결과 조회 실패: " + status);
+                });
+    }
+
+    public AiJobSubmitResponse submitCardGeneration(AiCardGenerateRequest request) {
+        log.info("User {} AI 명함 이미지 생성 요청", request.userId());
+        return restClient.post()
+                .uri("/ai/card/generate")
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(request)
+                .exchange((req, response) -> {
+                    if (response.getStatusCode().isError()) {
+                        log.error("AI 서버 오류: {}", response.getStatusCode());
+                        throw new CustomException(response.getStatusCode(), "AI 서버 오류: " + response.getStatusCode());
+                    }
+                    return response.bodyTo(AiJobSubmitResponse.class);
+                });
+    }
+
+    public Optional<AiCardGenerateResponse> getCardTaskResult(String taskId) {
+        return restClient.get()
+                .uri("/ai/tasks/{taskId}/result", taskId)
+                .exchange((req, response) -> {
+                    int status = response.getStatusCode().value();
+                    if (status == 200) return Optional.ofNullable(response.bodyTo(AiCardGenerateResponse.class));
+                    else if (status == 202) return Optional.<AiCardGenerateResponse>empty();
                     else throw new CustomException(response.getStatusCode(), "AI 결과 조회 실패: " + status);
                 });
     }
