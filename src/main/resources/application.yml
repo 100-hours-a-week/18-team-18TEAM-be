@@ -73,6 +73,9 @@ ai:
     hex:
       timeout-seconds: ${AI_TIME_OUT:100}
       poll-interval-seconds: ${AI_HEX_POLL_INTERVAL_SECONDS:20}
+    card:
+      timeout-seconds: ${AI_TIME_OUT:200}
+      poll-interval-seconds: ${AI_CARD_POLL_INTERVAL_SECONDS:10}
 
 metrics:
   http:

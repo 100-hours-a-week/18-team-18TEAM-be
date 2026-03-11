@@ -11,6 +11,7 @@ public class AiClientProperties {
     private String baseUrl;
     private Job job = new Job();
     private Hex hex = new Hex();
+    private Card card = new Card();
 
     @Getter
     @Setter
@@ -22,6 +23,13 @@ public class AiClientProperties {
     @Getter
     @Setter
     public static class Hex {
+        private int timeoutSeconds;
+        private int pollIntervalSeconds;
+    }
+
+    @Getter
+    @Setter
+    public static class Card {
         private int timeoutSeconds;
         private int pollIntervalSeconds;
     }
