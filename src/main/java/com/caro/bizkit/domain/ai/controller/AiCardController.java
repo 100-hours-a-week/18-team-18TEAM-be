@@ -2,6 +2,7 @@ package com.caro.bizkit.domain.ai.controller;
 
 import com.caro.bizkit.common.ApiResponse.ApiResponse;
 import com.caro.bizkit.domain.ai.dto.AiCardGenerationRequest;
+import com.caro.bizkit.domain.ai.dto.AiUsageResponse;
 import com.caro.bizkit.domain.ai.service.AiCardGenerationService;
 import com.caro.bizkit.domain.ai.service.AiUsageService;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
@@ -17,8 +18,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.Map;
 
 @RestController
 @RequestMapping("/api/ai/cards")
@@ -42,7 +41,7 @@ public class AiCardController {
 
     @Operation(summary = "AI 사용량 조회", description = "주간 잔여 횟수 및 누적 생성 횟수를 반환합니다.")
     @GetMapping("/usage")
-    public ResponseEntity<ApiResponse<Map<String, Integer>>> getUsage(
+    public ResponseEntity<ApiResponse<AiUsageResponse>> getUsage(
             @AuthenticationPrincipal UserPrincipal user
     ) {
         return ResponseEntity.ok(ApiResponse.success("AI 사용량 조회 성공", aiUsageService.getUsage(user.id())));
