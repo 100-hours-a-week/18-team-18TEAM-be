@@ -1,15 +1,13 @@
 package com.caro.bizkit.domain.ai.controller;
 
 import com.caro.bizkit.common.ApiResponse.ApiResponse;
+import com.caro.bizkit.domain.ai.dto.AiCardGenerationRequest;
 import com.caro.bizkit.domain.ai.service.AiCardGenerationService;
 import com.caro.bizkit.domain.ai.service.AiUsageService;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -36,7 +34,7 @@ public class AiCardController {
     @PostMapping
     public ResponseEntity<ApiResponse<Void>> generateCardImage(
             @AuthenticationPrincipal UserPrincipal user,
-            @Valid @RequestBody GenerateRequest request
+            @Valid @RequestBody AiCardGenerationRequest request
     ) {
         aiCardGenerationService.generate(user.id(), request.cardId(), request.tag(), request.text());
         return ResponseEntity.accepted().body(ApiResponse.success("AI 명함 이미지 생성 요청 성공", null));
@@ -49,10 +47,4 @@ public class AiCardController {
     ) {
         return ResponseEntity.ok(ApiResponse.success("AI 사용량 조회 성공", aiUsageService.getUsage(user.id())));
     }
-
-    public record GenerateRequest(
-            @NotNull @JsonProperty("card_id") Integer cardId,
-            @NotBlank String tag,
-            String text
-    ) {}
 }
