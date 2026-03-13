@@ -1,6 +1,6 @@
-package com.caro.bizkit.domain.user.entity;
+package com.caro.bizkit.domain.ai.entity;
 
-
+import com.caro.bizkit.domain.user.entity.User;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -14,10 +14,10 @@ import java.time.LocalDateTime;
 @EntityListeners(AuditingEntityListener.class)
 @Table(name = "ai_usage")
 public class AiUsage {
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Integer id;
-
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
@@ -28,7 +28,6 @@ public class AiUsage {
 
     @Column(nullable = false)
     private Integer totalCount = 0;
-
 
     @LastModifiedDate
     private LocalDateTime lastUsedAt;

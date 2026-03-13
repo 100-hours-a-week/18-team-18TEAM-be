@@ -2,8 +2,8 @@ package com.caro.bizkit.domain.ai.service;
 
 import com.caro.bizkit.common.exception.CustomException;
 import com.caro.bizkit.domain.ai.dto.AiUsageResponse;
-import com.caro.bizkit.domain.user.entity.AiUsage;
-import com.caro.bizkit.domain.user.repository.AiUsageRepository;
+import com.caro.bizkit.domain.ai.entity.AiUsage;
+import com.caro.bizkit.domain.ai.repository.AiUsageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
