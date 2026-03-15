@@ -4,12 +4,14 @@ package com.caro.bizkit.domain.user.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 import java.time.LocalDateTime;
 
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@EntityListeners(AuditingEntityListener.class)
 @Table(name = "ai_usage")
 public class AiUsage {
     @Id
@@ -35,6 +37,11 @@ public class AiUsage {
         AiUsage aiUsage = new AiUsage();
         aiUsage.user = user;
         return aiUsage;
+    }
+
+    public void decrementWeeklyCount() {
+        this.weeklyCount -= 1;
+        this.totalCount += 1;
     }
 
     public void setUser(User user) {
