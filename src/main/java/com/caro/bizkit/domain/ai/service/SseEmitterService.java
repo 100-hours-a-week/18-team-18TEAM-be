@@ -35,48 +35,11 @@ public class SseEmitterService {
     private final ObjectMapper objectMapper;
 
     public SseEmitter connect(Integer userId) {
-        // edge case: 이미 완료된 태스크 확인
-        var latestTask = aiCardTaskRepository.findTopByUser_IdOrderByCreatedAtDesc(userId);
-        if (latestTask.isPresent()) {
-            AiCardTask task = latestTask.get();
-            if (task.getStatus() == AiAnalysisStatus.COMPLETED) {
-                SseEmitter immediateEmitter = new SseEmitter(SSE_TIMEOUT);
-                try {
-                    immediateEmitter.send(SseEmitter.event()
-                            .name("completed")
-                            .data(Map.of("image_url", task.getResultImageUrl())));
-                    immediateEmitter.complete();
-                } catch (IOException e) {
-                    immediateEmitter.completeWithError(e);
-                }
-                return immediateEmitter;
-            }
-            if (task.getStatus() == AiAnalysisStatus.FAILED) {
-                SseEmitter immediateEmitter = new SseEmitter(SSE_TIMEOUT);
-                try {
-                    immediateEmitter.send(SseEmitter.event()
-                            .name("failed")
-                            .data(Map.of("error", "이미지 생성에 실패했습니다.")));
-                    immediateEmitter.complete();
-                } catch (IOException e) {
-                    immediateEmitter.completeWithError(e);
-                }
-                return immediateEmitter;
-            }
-        }
-
         SseEmitter emitter = new SseEmitter(SSE_TIMEOUT);
         AtomicBoolean cleaned = new AtomicBoolean(false);
         String channel = CHANNEL_PREFIX + userId;
 
         MessageListener listener = (message, pattern) -> handleRedisMessage(userId, message);
-
-        emitter.onCompletion(() -> {
-            if (cleaned.compareAndSet(false, true)) {
-                emitterMap.remove(userId);
-                listenerContainer.removeMessageListener(listener);
-            }
-        });
 
         emitter.onTimeout(() -> {
             try {
@@ -89,6 +52,19 @@ public class SseEmitterService {
             existing.complete();
         }
         listenerContainer.addMessageListener(listener, new ChannelTopic(channel));
+
+        emitter.onCompletion(() -> {
+            if (cleaned.compareAndSet(false, true)) {
+                emitterMap.remove(userId, emitter);
+                listenerContainer.removeMessageListener(listener);
+            }
+        });
+
+        try {
+            emitter.send(SseEmitter.event().name("connected").data(Map.of("status", "connected")));
+        } catch (IOException e) {
+            emitter.completeWithError(e);
+        }
 
         return emitter;
     }
@@ -115,18 +91,25 @@ public class SseEmitterService {
     }
 
     private void handleRedisMessage(Integer userId, Message message) {
+        log.info("[SSE] Redis 메시지 수신 userId={}, body={}", userId, new String(message.getBody()));
         SseEmitter emitter = emitterMap.get(userId);
-        if (emitter == null) return;
+        if (emitter == null) {
+            log.warn("[SSE] emitter 없음 userId={} — 메시지 무시", userId);
+            return;
+        }
 
         try {
             Map<?, ?> data = objectMapper.readValue(message.getBody(), Map.class);
             String event = (String) data.get("event");
+            log.info("[SSE] 이벤트 전송 시작 userId={}, event={}", userId, event);
             emitter.send(SseEmitter.event().name(event).data(data));
+            log.info("[SSE] 이벤트 전송 완료 userId={}, event={}", userId, event);
             if ("completed".equals(event) || "failed".equals(event)) {
                 emitter.complete();
+                log.info("[SSE] emitter complete userId={}", userId);
             }
         } catch (Exception e) {
-            log.error("SSE 메시지 전송 실패 userId={}: {}", userId, e.getMessage());
+            log.error("[SSE] 메시지 전송 실패 userId={}: {} ({})", userId, e.getMessage(), e.getClass().getSimpleName());
             emitter.completeWithError(e);
         }
     }
