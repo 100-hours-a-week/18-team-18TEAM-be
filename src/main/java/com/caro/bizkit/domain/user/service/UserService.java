@@ -9,7 +9,7 @@ import com.caro.bizkit.domain.auth.repository.OAuthRepository;
 import com.caro.bizkit.domain.auth.service.KakaoOAuthClient;
 import com.caro.bizkit.domain.auth.service.KakaoOAuthProperties;
 import com.caro.bizkit.domain.card.repository.UserCardRepository;
-import com.caro.bizkit.domain.user.repository.AiUsageRepository;
+import com.caro.bizkit.domain.ai.repository.AiUsageRepository;
 import com.caro.bizkit.domain.userdetail.skill.repository.UserSkillRepository;
 import com.caro.bizkit.domain.user.dto.UserPrincipal;
 import com.caro.bizkit.domain.user.dto.UserResponse;

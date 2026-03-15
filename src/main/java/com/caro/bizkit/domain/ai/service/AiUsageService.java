@@ -1,16 +1,15 @@
 package com.caro.bizkit.domain.ai.service;
 
 import com.caro.bizkit.common.exception.CustomException;
-import com.caro.bizkit.domain.user.entity.AiUsage;
-import com.caro.bizkit.domain.user.repository.AiUsageRepository;
+import com.caro.bizkit.domain.ai.dto.AiUsageResponse;
+import com.caro.bizkit.domain.ai.entity.AiUsage;
+import com.caro.bizkit.domain.ai.repository.AiUsageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Map;
 
 @Service
 @RequiredArgsConstructor
@@ -20,10 +19,10 @@ public class AiUsageService {
     private final AiUsageRepository aiUsageRepository;
 
     @Transactional(readOnly = true)
-    public Map<String, Integer> getUsage(Integer userId) {
+    public AiUsageResponse getUsage(Integer userId) {
         AiUsage usage = aiUsageRepository.findByUserId(userId)
                 .orElseThrow(() -> new CustomException(HttpStatus.NOT_FOUND, "사용량 정보를 찾을 수 없습니다."));
-        return Map.of("weekly_count", usage.getWeeklyCount(), "total_count", usage.getTotalCount());
+        return new AiUsageResponse(usage.getWeeklyCount(), usage.getTotalCount());
     }
 
     @Transactional(readOnly = true)
