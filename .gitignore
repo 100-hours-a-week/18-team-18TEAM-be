@@ -42,3 +42,6 @@ out/
 
 ## seed config
 src/main/java/com/caro/bizkit/common/config/SeedDataConfig.java
+
+## aplication.yml
+src/main/resources/application-local.yml
